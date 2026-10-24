@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Typecheck, build and test
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      # The hosted runner cannot be relied on to start throwaway PostgreSQL / MySQL servers.
+      ZIVAR_TEST_SKIP_SERVERS: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit and SQLite integration tests
+        run: npm test
+
+      - name: Build the app
+        run: npm run build
+
+  e2e:
+    name: End-to-end tests (real app)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build the app
+        run: npm run build
+
+      - name: Drive the app through the DevTools protocol
+        run: node tests/run.cjs --ui --only=ui.test
+
+      - name: Profile compatibility (data of earlier versions)
+        run: node tests/run.cjs --ui --only=profile-e2e

@@ -1,0 +1,6 @@
+# One line-ending convention in the repository, whatever the contributor's OS.
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.xlsx binary
+*.exe binary

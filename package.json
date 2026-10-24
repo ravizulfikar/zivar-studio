@@ -1,0 +1,110 @@
+{
+  "name": "zivar-studio",
+  "version": "1.0.0",
+  "description": "Zivar Studio — a desktop database client for PostgreSQL, MySQL/MariaDB, SQL Server and SQLite",
+  "homepage": "https://zivar.my.id",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ravizulfikar/zivar-studio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ravizulfikar/zivar-studio/issues"
+  },
+  "license": "MIT",
+  "keywords": [
+    "database",
+    "sql",
+    "postgresql",
+    "mysql",
+    "mariadb",
+    "sqlite",
+    "sql-server",
+    "electron",
+    "database-client"
+  ],
+  "author": "Zivar <ravizulfikar@zivar.my.id>",
+  "main": "out/main/index.js",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "dist": "electron-vite build && electron-builder --win nsis portable",
+    "dist:dir": "electron-vite build && electron-builder --win --dir",
+    "test": "node tests/run.cjs",
+    "test:ui": "node tests/run.cjs --ui",
+    "docs:shots": "electron-vite build && node scripts/docs-shots.cjs",
+    "icon": "electron scripts/make-icon.cjs",
+    "dist:ci": "electron-vite build && electron-builder --win nsis portable --publish never"
+  },
+  "dependencies": {
+    "mssql": "^12.7.11",
+    "mysql2": "^3.24.6",
+    "node-sqlite3-wasm": "^0.8.61",
+    "pg": "^8.23.1",
+    "ssh2": "^1.17.0"
+  },
+  "devDependencies": {
+    "@codemirror/lang-sql": "^6.10.0",
+    "@codemirror/search": "^6.7.2",
+    "@types/mssql": "^12.3.0",
+    "@types/node": "^26.6.5",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/ssh2": "^1.15.6",
+    "@uiw/react-codemirror": "^4.25.12",
+    "@vitejs/plugin-react": "^6.1.2",
+    "@xmldom/xmldom": "^0.9.12",
+    "electron": "^45.0.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^6.0.0",
+    "esbuild": "^0.28.2",
+    "fflate": "^0.8.3",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "sql-formatter": "^15.9.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5"
+  },
+  "build": {
+    "appId": "my.id.zivar.studio",
+    "productName": "Zivar Studio",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "resources/icon.png",
+      "package.json"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "artifactName": "ZivarStudio-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "ZivarStudio-Portable-${version}.${ext}"
+    },
+    "copyright": "Copyright © 2026 Zivar"
+  }
+}

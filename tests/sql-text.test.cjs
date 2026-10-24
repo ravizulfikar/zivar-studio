@@ -1,0 +1,87 @@
+// Pure SQL text helpers: literal serialisation, script splitting, minifying.
+const assert = require('node:assert/strict')
+const { sqlLiteral, quoteIdent, insertStatement } = require('./.build/sqlLiteral.cjs')
+const { splitSql, minifySql } = require('./.build/sqlSplit.cjs')
+
+const texts = (script, kind) => splitSql(script, kind).map((s) => s.text)
+
+// ── literals ──
+assert.equal(sqlLiteral('postgres', "it's"), "'it''s'")
+assert.equal(sqlLiteral('postgres', 'a\\b'), "'a\\b'", 'PostgreSQL keeps backslashes literal')
+assert.equal(sqlLiteral('mysql', "it's a\\b"), "'it''s a\\\\b'", 'MySQL escapes backslashes')
+assert.equal(sqlLiteral('mssql', "Ünï 'q'"), "N'Ünï ''q'''")
+assert.equal(sqlLiteral('sqlite', "x'y"), "'x''y'")
+assert.deepEqual([true, false].map((b) => sqlLiteral('postgres', b)), ['true', 'false'])
+assert.deepEqual([true, false].map((b) => sqlLiteral('mysql', b)), ['1', '0'])
+assert.equal(sqlLiteral('postgres', null), 'NULL')
+assert.equal(sqlLiteral('postgres', undefined), 'NULL')
+assert.equal(sqlLiteral('postgres', 42), '42')
+assert.equal(sqlLiteral('postgres', 1.5e-7), '1.5e-7')
+assert.equal(sqlLiteral('postgres', NaN), 'NULL')
+assert.equal(sqlLiteral('postgres', 9007199254740993n), '9007199254740993')
+const d = new Date(Date.UTC(2025, 8, 17, 13, 39, 18, 45))
+assert.equal(sqlLiteral('postgres', d), "'2025-09-17 13:39:18.045'")
+assert.equal(sqlLiteral('mssql', d), "'2025-09-17T13:39:18.045'")
+assert.equal(sqlLiteral('postgres', new Date(NaN)), 'NULL')
+const bytes = Uint8Array.from([0xde, 0xad, 0xbe, 0xef])
+assert.equal(sqlLiteral('postgres', bytes), "'\\xdeadbeef'")
+assert.equal(sqlLiteral('mysql', bytes), "X'deadbeef'")
+assert.equal(sqlLiteral('mssql', bytes), '0xdeadbeef')
+assert.equal(sqlLiteral('sqlite', new Uint8Array()), "X''")
+assert.equal(sqlLiteral('postgres', ['a', 'b c', null, 'q"x']), `'{"a","b c",NULL,"q\\"x"}'`)
+assert.equal(sqlLiteral('postgres', [[1, 2], [3]]), `'{{"1","2"},{"3"}}'`)
+assert.equal(sqlLiteral('mysql', { a: [1, "x'y"] }), `'{"a":[1,"x''y"]}'`)
+assert.equal(quoteIdent('mysql', 'a`b'), '`a``b`')
+assert.equal(quoteIdent('mssql', 'a]b'), '[a]]b]')
+assert.equal(quoteIdent('postgres', 'a"b'), '"a""b"')
+assert.equal(insertStatement('postgres', '"t"', ['id', 'n'], [[1, 'a'], [2, null]]), `INSERT INTO "t" ("id", "n") VALUES\n  (1, 'a'),\n  (2, NULL)`)
+console.log('SQL literals OK')
+
+// ── splitting: common ──
+assert.deepEqual(texts('select 1; select 2;', 'sqlite'), ['select 1', 'select 2'])
+assert.deepEqual(texts('select 1;\n\n  \n select 2', 'sqlite'), ['select 1', 'select 2'], 'last statement needs no semicolon')
+assert.deepEqual(texts(';;; select 1 ;;', 'sqlite'), ['select 1'], 'empty statements dropped')
+assert.deepEqual(texts('-- only a comment\n/* another */', 'sqlite'), [], 'comment-only script has no statements')
+assert.deepEqual(texts("select 'a;b', \"c;d\"; select 2", 'sqlite'), ["select 'a;b', \"c;d\"", 'select 2'], 'semicolons inside quotes')
+assert.deepEqual(texts("select 'it''s;ok'; select 2", 'sqlite'), ["select 'it''s;ok'", 'select 2'], 'doubled quote')
+assert.deepEqual(texts('select 1 -- trailing; comment\n; select 2', 'sqlite'), ['select 1 -- trailing; comment', 'select 2'])
+assert.deepEqual(texts('select /* a; b */ 1; select 2', 'sqlite'), ['select /* a; b */ 1', 'select 2'])
+assert.deepEqual(texts("select '-- not a comment'; select 2", 'sqlite'), ["select '-- not a comment'", 'select 2'])
+assert.deepEqual(texts('﻿select 1;', 'sqlite'), ['select 1'], 'BOM ignored')
+assert.deepEqual(splitSql('select 1;\n\n-- c\nselect\n 2;', 'sqlite').map((s) => s.line), [1, 4], 'start lines point at the statement, not the comment')
+console.log('split: common cases OK')
+
+// ── PostgreSQL ──
+const fn = 'CREATE FUNCTION f() RETURNS int AS $$ BEGIN PERFORM 1; RETURN 2; END; $$ LANGUAGE plpgsql;'
+assert.deepEqual(texts(`${fn} select 1;`, 'postgres'), [fn.slice(0, -1), 'select 1'], 'dollar-quoted body keeps its semicolons')
+assert.deepEqual(texts('select $fn$ a; $$ b; $fn$; select 2', 'postgres'), ['select $fn$ a; $$ b; $fn$', 'select 2'], 'tagged dollar quote')
+assert.deepEqual(texts("select E'it\\'s; ok'; select 2", 'postgres'), ["select E'it\\'s; ok'", 'select 2'], 'E-string backslash escape')
+assert.deepEqual(texts("select 'a\\'; select 2", 'postgres'), ["select 'a\\'", 'select 2'], 'plain string: backslash is literal')
+assert.deepEqual(texts('select 1 /* a /* nested; */ still comment; */ ; select 2', 'postgres'), ['select 1 /* a /* nested; */ still comment; */', 'select 2'], 'nested block comments')
+assert.deepEqual(texts('select "a;b" from "x;y"; select 2', 'postgres'), ['select "a;b" from "x;y"', 'select 2'])
+assert.deepEqual(texts('select $1, $2; select 3', 'postgres'), ['select $1, $2', 'select 3'], 'positional params are not dollar quotes')
+console.log('split: PostgreSQL OK')
+
+// ── MySQL ──
+assert.deepEqual(texts("select 'it\\'s; ok'; select 2", 'mysql'), ["select 'it\\'s; ok'", 'select 2'], 'backslash escape in strings')
+assert.deepEqual(texts('select 1; # hash; comment\nselect 2', 'mysql'), ['select 1', '# hash; comment\nselect 2'], 'hash comment ends at newline')
+const proc = 'DELIMITER $$\nCREATE PROCEDURE p()\nBEGIN\n  SELECT 1;\n  SELECT 2;\nEND$$\nDELIMITER ;\nselect 3;'
+assert.deepEqual(texts(proc, 'mysql'), ['CREATE PROCEDURE p()\nBEGIN\n  SELECT 1;\n  SELECT 2;\nEND', 'select 3'], 'DELIMITER blocks')
+assert.deepEqual(texts('/*!40101 SET NAMES utf8 */; select 1', 'mysql'), ['/*!40101 SET NAMES utf8 */', 'select 1'], 'executable comments are statements')
+assert.deepEqual(texts('select `a;b`; select 2', 'mysql'), ['select `a;b`', 'select 2'])
+console.log('split: MySQL OK')
+
+// ── SQL Server ──
+assert.deepEqual(texts('select 1\nGO\nselect 2\ngo\n', 'mssql'), ['select 1', 'select 2'], 'GO separates batches')
+assert.deepEqual(texts('select 1;\nselect 2\nGO 3\nselect 3', 'mssql'), ['select 1', 'select 2', 'select 3'], 'GO with a repeat count still separates')
+assert.deepEqual(texts("select [a;b]; select 'GO'\nselect 2", 'mssql'), ['select [a;b]', "select 'GO'\nselect 2"], 'brackets and GO inside text')
+assert.deepEqual(texts('select 1\n-- GO\nselect 2', 'mssql'), ['select 1\n-- GO\nselect 2'], 'GO in a comment is not a separator')
+console.log('split: SQL Server OK')
+
+// ── minify ──
+assert.equal(minifySql("select  a ,\n  b -- c\n from /* x */ t\n where s = 'a  b;  c' ", 'sqlite'), "select a , b from t where s = 'a  b;  c'")
+assert.equal(minifySql('select "a  b", `c  d` from [e  f]', 'mssql'), 'select "a  b", `c  d` from [e  f]')
+assert.equal(minifySql('select $$ a   b $$,   1', 'postgres'), 'select $$ a   b $$, 1')
+assert.equal(minifySql("select 'it\\'s   x'", 'mysql'), "select 'it\\'s   x'")
+console.log('minify OK')
+console.log('ALL SQL-TEXT TESTS PASSED')

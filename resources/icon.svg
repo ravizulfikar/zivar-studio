@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#22c9b2"/>
+      <stop offset="1" stop-color="#0a6f62"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="58" fill="url(#bg)"/>
+  <clipPath id="clip"><rect x="8" y="8" width="240" height="240" rx="58"/></clipPath>
+  <rect x="8" y="8" width="240" height="130" fill="url(#shine)" clip-path="url(#clip)"/>
+  <!-- a faint data grid behind the mark: this is a studio for tables -->
+  <g stroke="#fff" stroke-opacity="0.13" stroke-width="4" stroke-linecap="round">
+    <path d="M40 62H216M40 128H216M40 194H216"/>
+    <path d="M100 40V216M156 40V216"/>
+  </g>
+  <!-- a Z drawn as one path through the data: two bars and a diagonal -->
+  <path d="M78 86H178L78 170H178" fill="none" stroke="#fff" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- the two ends are nodes, as in a relation diagram -->
+  <circle cx="78" cy="86" r="17" fill="#ffb547" stroke="#0a6f62" stroke-width="6"/>
+  <circle cx="178" cy="170" r="17" fill="#ffb547" stroke="#0a6f62" stroke-width="6"/>
+</svg>
