@@ -54,7 +54,7 @@ Get the latest build from the [**Releases**](https://github.com/ravizulfikar/ziv
 | | `ZivarDatabaseStudio-Portable-<version>.exe` | A single file; run it anywhere, no installation. |
 | **Debian / Ubuntu** (x64) | `ZivarDatabaseStudio-<version>-linux-amd64.deb` | `sudo apt install ./ZivarDatabaseStudio-<version>-linux-amd64.deb` |
 | **Fedora / openSUSE / RHEL** (x64) | `ZivarDatabaseStudio-<version>-linux-x86_64.rpm` | `sudo dnf install ./ZivarDatabaseStudio-<version>-linux-x86_64.rpm` |
-| **Any Linux** (x64) | `ZivarDatabaseStudio-<version>-linux-x64.AppImage` | `chmod +x` the file and run it. |
+| **Any Linux** (x64) | `ZivarDatabaseStudio-<version>-linux-x86_64.AppImage` | `chmod +x` the file and run it. |
 | | `SHA256SUMS.txt` | Checksums to verify the downloads. |
 
 The Windows installers are not code-signed, so SmartScreen may show a warning the first time; choose *More info → Run anyway* if you trust the source.

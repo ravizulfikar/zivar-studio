@@ -37,7 +37,7 @@ Ambil versi terbaru di halaman [**Releases**](https://github.com/ravizulfikar/zi
 | | `ZivarDatabaseStudio-Portable-<versi>.exe` | Satu berkas, langsung jalan tanpa instalasi. |
 | **Debian / Ubuntu** (x64) | `ZivarDatabaseStudio-<versi>-linux-amd64.deb` | `sudo apt install ./ZivarDatabaseStudio-<versi>-linux-amd64.deb` |
 | **Fedora / openSUSE / RHEL** (x64) | `ZivarDatabaseStudio-<versi>-linux-x86_64.rpm` | `sudo dnf install ./ZivarDatabaseStudio-<versi>-linux-x86_64.rpm` |
-| **Linux apa pun** (x64) | `ZivarDatabaseStudio-<versi>-linux-x64.AppImage` | `chmod +x` lalu jalankan. |
+| **Linux apa pun** (x64) | `ZivarDatabaseStudio-<versi>-linux-x86_64.AppImage` | `chmod +x` lalu jalankan. |
 | | `SHA256SUMS.txt` | Checksum untuk memeriksa keaslian unduhan. |
 
 Installer Windows belum ditandatangani (code signing), jadi SmartScreen mungkin menampilkan peringatan pada pembukaan pertama. Pilih *More info → Run anyway* jika Anda mempercayai sumbernya.
