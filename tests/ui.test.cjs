@@ -210,7 +210,10 @@ const waitFor = async (expr, what, ms = 8000) => {
   await waitFor(`!!document.querySelector('.import-dialog input[type=file]')`, 'import dialog')
   await setFile(CSV)
   await waitFor(`document.querySelectorAll('.import-dialog .map-wrap select').length >= 4`, 'column mapping')
-  const mapped = await ev(`[...document.querySelectorAll('.import-dialog .map-wrap')[0].querySelectorAll('tbody tr')].map(r => [r.cells[0].textContent.trim(), r.querySelector('select').selectedOptions[0].textContent])`)
+  // the dropdowns appear first and the automatic matching fills them a moment later: wait for it
+  const mappedNow = `[...document.querySelectorAll('.import-dialog .map-wrap')[0].querySelectorAll('tbody tr')].map(r => [r.cells[0].textContent.trim(), r.querySelector('select').selectedOptions[0].textContent])`
+  await waitFor(`JSON.stringify(${mappedNow}.map((m) => m[1])) === ${JSON.stringify(JSON.stringify(['— don’t import —', 'Mail', 'AGE', 'Nick']))}`, 'columns matched by name', 10000).catch(() => undefined)
+  const mapped = await ev(mappedNow)
   console.log('  auto mapping:', JSON.stringify(mapped))
   assert.deepEqual(mapped.map((m) => m[1]), ['— don’t import —', 'Mail', 'AGE', 'Nick'], 'columns matched by name, ignoring case; id left unmapped')
   assert.match(await ev(`document.querySelector('.import-dialog').textContent`), /3 data row\(s\), 3 column\(s\)/, 'blank line dropped, semicolon detected')
