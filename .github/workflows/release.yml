@@ -162,6 +162,16 @@ jobs:
           test -e /usr/share/applications/zivar-database-studio.desktop
           cat /usr/share/applications/zivar-database-studio.desktop
 
+      - name: Every shared library the app needs is present
+        run: |
+          bin=$(readlink -f "$(command -v zivar-database-studio)")
+          echo "binary: $bin"
+          if ldd "$bin" | grep "not found"; then
+            echo "::error::the package does not pull in the libraries listed above"
+            exit 1
+          fi
+          echo "none missing"
+
       - name: Start the installed app and check it (virtual display)
         run: |
           version=$(node -p "require('./package.json').version")
