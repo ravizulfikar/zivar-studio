@@ -172,6 +172,12 @@ jobs:
           fi
           echo "none missing"
 
+      - name: What the app prints when it starts (for diagnosis)
+        if: always()
+        continue-on-error: true
+        run: |
+          timeout 12 xvfb-run -a "$(command -v zivar-database-studio)" --no-sandbox --user-data-dir=/tmp/zivar-diag 2>&1 | head -40 || true
+
       - name: Start the installed app and check it (virtual display)
         run: |
           version=$(node -p "require('./package.json').version")
