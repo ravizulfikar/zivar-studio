@@ -458,8 +458,9 @@ const waitFor = async (expr, what, ms = 8000) => {
   await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: c.x, y: c.y, button: 'left', clickCount: 1 })
   await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: c.x + 60, y: c.y + 40, button: 'left' })
   await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: c.x + 60, y: c.y + 40, button: 'left', clickCount: 1 })
-  const after = await posOf('users')
-  assert.notEqual(after, before, 'dragging the title moves the table')
+  // the position is state, drawn on the next frame: wait for it rather than reading it the instant the mouse is released
+  await waitFor(`__pane().querySelector('g.er-table[data-name="users"]').getAttribute('transform') !== ${JSON.stringify(before)}`, 'dragging the title moves the table')
+  await waitFor(`Object.keys(localStorage).some(k => k.startsWith('zivar-er:'))`, 'the position is written to storage')
   const saved = await ev(`Object.keys(localStorage).filter(k => k.startsWith('zivar-er:')).map(k => JSON.parse(localStorage.getItem(k)).users)`)
   assert.equal(saved.length, 1, 'the new position is saved for next time')
   console.log('ER diagram: tables, relation, drag + remembered position OK')
