@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="resources/icon.png" alt="Zivar Studio" width="120" />
+<img src="resources/icon.png" alt="Zivar Database Studio" width="120" />
 
-# Zivar Studio
+# Zivar Database Studio
 
 **A desktop database client for PostgreSQL, MySQL / MariaDB, SQL Server and SQLite.**
 
@@ -14,7 +14,7 @@ Browse, query, edit, design, migrate and diagram your databases from one window.
 
 [Download](https://github.com/ravizulfikar/zivar-studio/releases/latest) · [Website](https://zivar.my.id) · [Bahasa Indonesia](README.id.md)
 
-<img src="src/renderer/src/docs/img/overview.png" alt="Zivar Studio main window" width="860" />
+<img src="src/renderer/src/docs/img/overview.png" alt="Zivar Database Studio main window" width="860" />
 
 </div>
 
@@ -48,11 +48,11 @@ Browse, query, edit, design, migrate and diagram your databases from one window.
 
 Get the latest build from the [**Releases**](https://github.com/ravizulfikar/zivar-studio/releases/latest) page:
 
-- **`ZivarStudio-Setup-<version>.exe`** — installer (per-user, choose the folder).
-- **`ZivarStudio-Portable-<version>.exe`** — a single file; run it anywhere.
+- **`ZivarDatabaseStudio-Setup-<version>.exe`** — installer (per-user, choose the folder).
+- **`ZivarDatabaseStudio-Portable-<version>.exe`** — a single file; run it anywhere.
 - **`SHA256SUMS.txt`** — checksums to verify the downloads.
 
-Zivar Studio currently targets **Windows 10 / 11 (x64)**. The installers are not code-signed, so Windows SmartScreen may show a warning the first time; choose *More info → Run anyway* if you trust the source.
+Zivar Database Studio currently targets **Windows 10 / 11 (x64)**. The installers are not code-signed, so Windows SmartScreen may show a warning the first time; choose *More info → Run anyway* if you trust the source.
 
 ## Build from source
 

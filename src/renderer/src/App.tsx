@@ -320,7 +320,7 @@ export function App(): JSX.Element {
       items: [
         { label: 'Documentation', hint: 'F1', onClick: openDocs },
         { separator: true, label: '' },
-        { label: 'About Zivar Studio', onClick: () => setAbout(true) }
+        { label: 'About Zivar Database Studio', onClick: () => setAbout(true) }
       ]
     }
   ]
@@ -557,7 +557,7 @@ export function App(): JSX.Element {
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="about">
               <ZivarLogo size={64} />
-              <h3>Zivar Studio</h3>
+              <h3>Zivar Database Studio</h3>
               <div className="muted">Version {__APP_VERSION__}</div>
               <a
                 className="jed-link"

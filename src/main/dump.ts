@@ -64,7 +64,7 @@ export async function dumpSql(
   const stmt = (s: string): Promise<void> => write(`${s};\n`)
 
   try {
-    await write(`-- Zivar Studio SQL dump\n-- Engine: ${kind}\n-- Source: ${container}\n-- Generated: ${new Date().toISOString()}\n-- Tables: ${tables.length}\n\n`)
+    await write(`-- Zivar Database Studio SQL dump\n-- Engine: ${kind}\n-- Source: ${container}\n-- Generated: ${new Date().toISOString()}\n-- Tables: ${tables.length}\n\n`)
     if (kind === 'postgres') {
       await stmt("SET client_encoding = 'UTF8'")
       if (opts.qualified) await stmt(`CREATE SCHEMA IF NOT EXISTS ${quoteIdent(kind, container)}`)

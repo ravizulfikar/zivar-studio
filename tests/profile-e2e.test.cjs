@@ -90,7 +90,7 @@ async function withApp({ appdata, userDataDir }, fn) {
     const saved = JSON.parse(await ev(`window.api.savedList().then(r => JSON.stringify(r))`))
     assert.deepEqual(saved.data.map((q) => q.name), ['Old query'], 'saved queries are there')
   })
-  for (const name of ['zivar-studio', 'Zivar Studio']) assert.ok(!fs.existsSync(path.join(appdata, name, 'connections.json')), `no second profile (${name}) was started`)
+  for (const name of ['zivar-studio', 'Zivar Studio', 'zivar-database-studio', 'Zivar Database Studio']) assert.ok(!fs.existsSync(path.join(appdata, name, 'connections.json')), `no second profile (${name}) was started`)
   console.log('upgrade: connections, encrypted password and saved queries carried over OK')
 
   // (A fresh install, with no old folder anywhere, keeps the default folder: covered by profile.test.cjs. It is not run

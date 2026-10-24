@@ -548,10 +548,10 @@ const waitFor = async (expr, what, ms = 8000) => {
   console.log('documentation: sections, screenshots load, contents, search, zoom, F1 OK')
 
   // About: just the name, the version and the website (the link goes to the system browser, so capture it)
-  await helpItem('About Zivar Studio')
+  await helpItem('About Zivar Database Studio')
   await waitFor(`!!document.querySelector('.about')`, 'about dialog')
   const about = await ev(`document.querySelector('.about').innerText`)
-  assert.match(about, /Zivar Studio/)
+  assert.match(about, /Zivar Database Studio/)
   assert.match(about, new RegExp('Version ' + VERSION.replace(/\./g, '\\.')), 'shows the version from package.json')
   assert.match(about, /zivar\.my\.id/)
   assert.doesNotMatch(await ev(`document.querySelector('.about').closest('.dialog').innerText`), /multi-database client/, 'no marketing text')

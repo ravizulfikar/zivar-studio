@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="resources/icon.png" alt="Zivar Studio" width="120" />
+<img src="resources/icon.png" alt="Zivar Database Studio" width="120" />
 
-# Zivar Studio
+# Zivar Database Studio
 
 **Aplikasi desktop untuk mengelola database PostgreSQL, MySQL / MariaDB, SQL Server, dan SQLite.**
 
@@ -10,7 +10,7 @@ Jelajahi, query, edit, rancang, pindahkan, dan gambarkan database dari satu jend
 
 [Unduh](https://github.com/ravizulfikar/zivar-studio/releases/latest) · [Website](https://zivar.my.id) · [English](README.md)
 
-<img src="src/renderer/src/docs/img/overview.png" alt="Jendela utama Zivar Studio" width="860" />
+<img src="src/renderer/src/docs/img/overview.png" alt="Jendela utama Zivar Database Studio" width="860" />
 
 </div>
 
@@ -31,8 +31,8 @@ Jelajahi, query, edit, rancang, pindahkan, dan gambarkan database dari satu jend
 
 Ambil versi terbaru di halaman [**Releases**](https://github.com/ravizulfikar/zivar-studio/releases/latest):
 
-- **`ZivarStudio-Setup-<versi>.exe`**: installer.
-- **`ZivarStudio-Portable-<versi>.exe`**: satu berkas, langsung jalan.
+- **`ZivarDatabaseStudio-Setup-<versi>.exe`**: installer.
+- **`ZivarDatabaseStudio-Portable-<versi>.exe`**: satu berkas, langsung jalan.
 - **`SHA256SUMS.txt`**: checksum untuk memeriksa keaslian unduhan.
 
 Saat ini ditujukan untuk **Windows 10 / 11 (x64)**. Installer belum ditandatangani (code signing), jadi Windows SmartScreen mungkin menampilkan peringatan pada pembukaan pertama. Pilih *More info → Run anyway* jika Anda mempercayai sumbernya.

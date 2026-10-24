@@ -1,7 +1,7 @@
 {
   "name": "zivar-studio",
   "version": "1.0.0",
-  "description": "Zivar Studio — a desktop database client for PostgreSQL, MySQL/MariaDB, SQL Server and SQLite",
+  "description": "Zivar Database Studio — a desktop database client for PostgreSQL, MySQL/MariaDB, SQL Server and SQLite",
   "homepage": "https://zivar.my.id",
   "repository": {
     "type": "git",
@@ -70,7 +70,7 @@
   },
   "build": {
     "appId": "my.id.zivar.studio",
-    "productName": "Zivar Studio",
+    "productName": "Zivar Database Studio",
     "directories": {
       "output": "release"
     },
@@ -100,10 +100,10 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "perMachine": false,
-      "artifactName": "ZivarStudio-Setup-${version}.${ext}"
+      "artifactName": "ZivarDatabaseStudio-Setup-${version}.${ext}"
     },
     "portable": {
-      "artifactName": "ZivarStudio-Portable-${version}.${ext}"
+      "artifactName": "ZivarDatabaseStudio-Portable-${version}.${ext}"
     },
     "copyright": "Copyright © 2026 Zivar"
   }

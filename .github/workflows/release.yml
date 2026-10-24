@@ -56,7 +56,7 @@ jobs:
         shell: bash
         working-directory: release
         run: |
-          sha256sum ZivarStudio-*.exe > SHA256SUMS.txt
+          sha256sum ZivarDatabaseStudio-*.exe > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
       - name: Keep the files as workflow artifacts
@@ -64,8 +64,8 @@ jobs:
         with:
           name: zivar-studio-windows
           path: |
-            release/ZivarStudio-Setup-*.exe
-            release/ZivarStudio-Portable-*.exe
+            release/ZivarDatabaseStudio-Setup-*.exe
+            release/ZivarDatabaseStudio-Portable-*.exe
             release/SHA256SUMS.txt
           if-no-files-found: error
 
@@ -76,12 +76,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="$GITHUB_REF_NAME"
-          files=(release/ZivarStudio-Setup-*.exe release/ZivarStudio-Portable-*.exe release/SHA256SUMS.txt)
+          files=(release/ZivarDatabaseStudio-Setup-*.exe release/ZivarDatabaseStudio-Portable-*.exe release/SHA256SUMS.txt)
           flags=()
           case "$tag" in *-*) flags+=(--prerelease) ;; esac
           if gh release view "$tag" >/dev/null 2>&1; then
             # a re-run: replace the files of the existing release
             gh release upload "$tag" "${files[@]}" --clobber
           else
-            gh release create "$tag" "${files[@]}" --title "Zivar Studio $tag" --generate-notes "${flags[@]}"
+            gh release create "$tag" "${files[@]}" --title "Zivar Database Studio $tag" --generate-notes "${flags[@]}"
           fi

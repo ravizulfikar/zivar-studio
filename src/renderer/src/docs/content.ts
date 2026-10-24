@@ -1,6 +1,6 @@
 import type { Group } from './blocks'
 
-// Dokumentasi Zivar Studio. Nama tombol dan menu ditulis persis seperti yang tampil di aplikasi (berbahasa Inggris).
+// Dokumentasi Zivar Database Studio. Nama tombol dan menu ditulis persis seperti yang tampil di aplikasi (berbahasa Inggris).
 // Gambar ada di ./img dan dibuat ulang dengan `npm run docs:shots`.
 
 export const GROUPS: Group[] = [
@@ -9,10 +9,10 @@ export const GROUPS: Group[] = [
     sections: [
             {
         id: 'pengenalan',
-        title: 'Mengenal Zivar Studio',
+        title: 'Mengenal Zivar Database Studio',
         summary: 'Satu aplikasi desktop untuk PostgreSQL, MySQL/MariaDB, SQL Server, dan SQLite.',
         blocks: [
-          { t: 'p', text: 'Zivar Studio adalah klien database untuk mengelola beberapa jenis database dari satu jendela: menjelajah tabel, mengedit data, menulis SQL, merancang tabel, memindahkan data antar database, dan melihat relasi antar tabel.' },
+          { t: 'p', text: 'Zivar Database Studio adalah klien database untuk mengelola beberapa jenis database dari satu jendela: menjelajah tabel, mengedit data, menulis SQL, merancang tabel, memindahkan data antar database, dan melihat relasi antar tabel.' },
           { t: 'img', file: 'overview', caption: 'Jendela utama: daftar koneksi di kiri, tab kerja di kanan, panel Details di kiri bawah.' },
           { t: 'table', head: ['Bagian', 'Fungsi'], rows: [
             ['**Menu bar** (File, View, Tools, Help)', 'Semua perintah juga ada di sini. Help → Documentation (F1) membuka halaman ini.'],

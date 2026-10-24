@@ -191,7 +191,7 @@ function exportSql(result: QueryResult, fileName: string, opts: ExportOptions): 
   const kind = opts.kind
   if (!kind) throw new Error('Exporting as SQL needs to know the database type.')
   const table = quoteIdent(kind, opts.table || 'exported_data')
-  const parts: string[] = [`-- ${result.rows.length} row(s) exported by Zivar Studio\n`]
+  const parts: string[] = [`-- ${result.rows.length} row(s) exported by Zivar Database Studio\n`]
   for (let i = 0; i < result.rows.length; i += SQL_BATCH) parts.push(`${insertStatement(kind, table, result.columns, result.rows.slice(i, i + SQL_BATCH))};\n`)
   download(new Blob(['\uFEFF' + parts.join('\n')], { type: 'application/sql;charset=utf-8' }), withExt(fileName, 'sql'))
 }
