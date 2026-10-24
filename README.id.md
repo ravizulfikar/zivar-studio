@@ -35,8 +35,8 @@ Ambil versi terbaru di halaman [**Releases**](https://github.com/ravizulfikar/zi
 |---|---|---|
 | **Windows 10 / 11** (x64) | `ZivarDatabaseStudio-Setup-<versi>.exe` | Jalankan (instalasi per pengguna, folder bisa dipilih). |
 | | `ZivarDatabaseStudio-Portable-<versi>.exe` | Satu berkas, langsung jalan tanpa instalasi. |
-| **Debian / Ubuntu** (x64) | `ZivarDatabaseStudio-<versi>-linux-amd64.deb` | `sudo apt install ./ZivarDatabaseStudio-<versi>-linux-amd64.deb` |
-| **Fedora / openSUSE / RHEL** (x64) | `ZivarDatabaseStudio-<versi>-linux-x86_64.rpm` | `sudo dnf install ./ZivarDatabaseStudio-<versi>-linux-x86_64.rpm` |
+| **Debian 12 / 13, Ubuntu 22.04 / 24.04** (x64, dipasang dan dijalankan di CI) | `ZivarDatabaseStudio-<versi>-linux-amd64.deb` | `sudo apt install ./ZivarDatabaseStudio-<versi>-linux-amd64.deb` |
+| **Fedora** (x64, dipasang dan dijalankan di CI) dan yang sejenis | `ZivarDatabaseStudio-<versi>-linux-x86_64.rpm` | `sudo dnf install ./ZivarDatabaseStudio-<versi>-linux-x86_64.rpm` |
 | **Linux apa pun** (x64) | `ZivarDatabaseStudio-<versi>-linux-x86_64.AppImage` | `chmod +x` lalu jalankan. |
 | | `SHA256SUMS.txt` | Checksum untuk memeriksa keaslian unduhan. |
 

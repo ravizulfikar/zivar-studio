@@ -1,6 +1,6 @@
 {
   "name": "zivar-studio",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Zivar Database Studio — a desktop database client for PostgreSQL, MySQL/MariaDB, SQL Server and SQLite",
   "homepage": "https://zivar.my.id",
   "repository": {
@@ -136,10 +136,36 @@
       "artifactName": "ZivarDatabaseStudio-${version}-linux-${arch}.${ext}"
     },
     "deb": {
-      "packageName": "zivar-database-studio"
+      "packageName": "zivar-database-studio",
+      "depends": [
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libuuid1",
+        "libsecret-1-0",
+        "libgbm1",
+        "libasound2 | libasound2t64"
+      ]
     },
     "rpm": {
-      "packageName": "zivar-database-studio"
+      "packageName": "zivar-database-studio",
+      "depends": [
+        "gtk3",
+        "libnotify",
+        "nss",
+        "libXScrnSaver",
+        "(libXtst or libXtst6)",
+        "xdg-utils",
+        "at-spi2-core",
+        "(libuuid or libuuid1)",
+        "(libsecret or libsecret-1-0)",
+        "(mesa-libgbm or libgbm1)",
+        "(alsa-lib or libasound2)"
+      ]
     }
   }
 }

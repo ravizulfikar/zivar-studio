@@ -182,9 +182,59 @@ jobs:
           apt-get remove -y zivar-database-studio
           ! command -v zivar-database-studio
 
+  rpm-install:
+    name: Install the .rpm on ${{ matrix.image }}
+    needs: linux
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ['fedora:latest']
+    container: ${{ matrix.image }}
+    steps:
+      - name: Tools for the test itself (not for the app)
+        run: dnf install -y git tar xorg-x11-server-Xvfb xauth ca-certificates
+
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: zivar-linux
+          path: assets
+
+      - name: Install the package (dnf resolves its dependencies from this distribution)
+        run: |
+          dnf install -y ./assets/ZivarDatabaseStudio-*-linux-x86_64.rpm
+          rpm -q --requires zivar-database-studio
+
+      - name: Every shared library the app needs is present
+        run: |
+          bin=$(readlink -f "$(command -v zivar-database-studio)")
+          echo "binary: $bin"
+          if ldd "$bin" | grep "not found"; then
+            echo "::error::the package does not pull in the libraries listed above"
+            exit 1
+          fi
+          echo "none missing"
+
+      - name: Start the installed app and check it (virtual display)
+        run: |
+          version=$(node -p "require('./package.json').version")
+          xvfb-run -a node tests/packaged-smoke.cjs "$(command -v zivar-database-studio)" "$version" "Zivar Database Studio"
+
+      - name: Uninstall
+        run: |
+          dnf remove -y zivar-database-studio
+          ! command -v zivar-database-studio
+
   publish:
     name: Publish the GitHub Release
-    needs: [windows, linux, deb-install]
+    needs: [windows, linux, deb-install, rpm-install]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:

@@ -52,8 +52,8 @@ Get the latest build from the [**Releases**](https://github.com/ravizulfikar/ziv
 |---|---|---|
 | **Windows 10 / 11** (x64) | `ZivarDatabaseStudio-Setup-<version>.exe` | Run it (per-user install, you can choose the folder). |
 | | `ZivarDatabaseStudio-Portable-<version>.exe` | A single file; run it anywhere, no installation. |
-| **Debian / Ubuntu** (x64) | `ZivarDatabaseStudio-<version>-linux-amd64.deb` | `sudo apt install ./ZivarDatabaseStudio-<version>-linux-amd64.deb` |
-| **Fedora / openSUSE / RHEL** (x64) | `ZivarDatabaseStudio-<version>-linux-x86_64.rpm` | `sudo dnf install ./ZivarDatabaseStudio-<version>-linux-x86_64.rpm` |
+| **Debian 12 / 13, Ubuntu 22.04 / 24.04** (x64, installed and started in CI) | `ZivarDatabaseStudio-<version>-linux-amd64.deb` | `sudo apt install ./ZivarDatabaseStudio-<version>-linux-amd64.deb` |
+| **Fedora** (x64, installed and started in CI) and compatible | `ZivarDatabaseStudio-<version>-linux-x86_64.rpm` | `sudo dnf install ./ZivarDatabaseStudio-<version>-linux-x86_64.rpm` |
 | **Any Linux** (x64) | `ZivarDatabaseStudio-<version>-linux-x86_64.AppImage` | `chmod +x` the file and run it. |
 | | `SHA256SUMS.txt` | Checksums to verify the downloads. |
 
