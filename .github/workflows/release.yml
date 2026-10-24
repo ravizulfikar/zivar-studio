@@ -121,9 +121,60 @@ jobs:
             release/ZivarDatabaseStudio-*-linux-*.rpm
           if-no-files-found: error
 
+  deb-install:
+    name: Install the .deb on ${{ matrix.image }}
+    needs: linux
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ['debian:12', 'debian:13', 'ubuntu:22.04', 'ubuntu:24.04']
+    # A bare, minimal system: it only has what the package itself asks for.
+    container: ${{ matrix.image }}
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - name: Tools for the test itself (not for the app)
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates curl git xvfb xauth
+
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: zivar-linux
+          path: assets
+
+      - name: Install the package (apt resolves its dependencies from this distribution)
+        run: |
+          apt-get install -y --no-install-recommends ./assets/ZivarDatabaseStudio-*-linux-amd64.deb
+          dpkg -s zivar-database-studio | grep -E '^(Package|Version|Architecture|Depends):'
+
+      - name: The menu entry and the icon are installed
+        run: |
+          dpkg -L zivar-database-studio | grep -E '\.desktop$|/icons/|/usr/bin/' || true
+          test -e /usr/share/applications/zivar-database-studio.desktop
+          cat /usr/share/applications/zivar-database-studio.desktop
+
+      - name: Start the installed app and check it (virtual display)
+        run: |
+          version=$(node -p "require('./package.json').version")
+          xvfb-run -a node tests/packaged-smoke.cjs "$(command -v zivar-database-studio)" "$version" "Zivar Database Studio"
+
+      - name: Uninstall
+        run: |
+          apt-get remove -y zivar-database-studio
+          ! command -v zivar-database-studio
+
   publish:
     name: Publish the GitHub Release
-    needs: [windows, linux]
+    needs: [windows, linux, deb-install]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
