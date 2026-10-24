@@ -22,6 +22,7 @@ let PORT = 0
 let target = null // connection settings of the server under test
 
 function locateBin() {
+  if (process.env.ZIVAR_TEST_SKIP_SERVERS) return undefined // CI machines: do not start a server
   const candidates = [process.env.PG_BIN, 'C:/Program Files/PostgreSQL/17/bin', 'C:/Program Files/PostgreSQL/16/bin', '/usr/lib/postgresql/17/bin', '/usr/lib/postgresql/16/bin'].filter(Boolean)
   return candidates.find((d) => fs.existsSync(path.join(d, process.platform === 'win32' ? 'initdb.exe' : 'initdb')))
 }

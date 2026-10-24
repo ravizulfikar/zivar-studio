@@ -1,6 +1,6 @@
 {
   "name": "zivar-studio",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Zivar Database Studio — a desktop database client for PostgreSQL, MySQL/MariaDB, SQL Server and SQLite",
   "homepage": "https://zivar.my.id",
   "repository": {
@@ -36,7 +36,8 @@
     "test:ui": "node tests/run.cjs --ui",
     "docs:shots": "electron-vite build && node scripts/docs-shots.cjs",
     "icon": "electron scripts/make-icon.cjs",
-    "dist:ci": "electron-vite build && electron-builder --win nsis portable --publish never"
+    "dist:ci": "electron-vite build && electron-builder --win nsis portable --publish never",
+    "dist:linux": "electron-vite build && electron-builder --linux --publish never"
   },
   "dependencies": {
     "mssql": "^12.7.11",
@@ -105,6 +106,40 @@
     "portable": {
       "artifactName": "ZivarDatabaseStudio-Portable-${version}.${ext}"
     },
-    "copyright": "Copyright © 2026 Zivar"
+    "copyright": "Copyright © 2026 Zivar",
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "rpm",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "Development",
+      "synopsis": "Database client for PostgreSQL, MySQL/MariaDB, SQL Server and SQLite",
+      "executableName": "zivar-database-studio",
+      "maintainer": "Zivar <ravizulfikar@zivar.my.id>",
+      "artifactName": "ZivarDatabaseStudio-${version}-linux-${arch}.${ext}"
+    },
+    "deb": {
+      "packageName": "zivar-database-studio"
+    },
+    "rpm": {
+      "packageName": "zivar-database-studio"
+    }
   }
 }

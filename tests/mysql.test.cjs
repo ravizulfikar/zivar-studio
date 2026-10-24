@@ -21,6 +21,7 @@ let inst = null // throwaway instance: { child, root }
 let target = null
 
 function locateBin() {
+  if (process.env.ZIVAR_TEST_SKIP_SERVERS) return undefined // CI machines: do not start a server
   const exeName = process.platform === 'win32' ? 'mysqld.exe' : 'mysqld'
   const candidates = [process.env.MYSQL_BIN, 'C:/laragon/bin/mysql/mysql-8.0.30-winx64/bin', '/usr/sbin', '/usr/local/mysql/bin'].filter(Boolean)
   return candidates.find((d) => fs.existsSync(path.join(d, exeName)))

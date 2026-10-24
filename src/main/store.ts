@@ -3,7 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { ConnectionConfig, SshConfig } from '@shared/types'
 
-/** On disk, secrets are replaced by OS-encrypted blobs (DPAPI on Windows). */
+/** On disk, secrets are replaced by OS-encrypted blobs (DPAPI on Windows, the system keyring on Linux). */
 type StoredSsh = Omit<SshConfig, 'password' | 'passphrase'> & { passwordEnc?: string; passphraseEnc?: string }
 type StoredConnection = Omit<ConnectionConfig, 'password' | 'ssh'> & { passwordEnc?: string; ssh?: StoredSsh }
 
@@ -12,7 +12,11 @@ const file = (): string => join(app.getPath('userData'), 'connections.json')
 function encrypt(plain: string | undefined): string | undefined {
   if (!plain) return undefined
   if (!safeStorage.isEncryptionAvailable()) {
-    throw new Error('OS secure storage is unavailable; refusing to save a secret in plain text')
+    throw new Error(
+      process.platform === 'linux'
+        ? 'No system keyring was found, so the password cannot be stored safely. Install and unlock a keyring (for example gnome-keyring or KWallet) and try again.'
+        : 'OS secure storage is unavailable; refusing to save a secret in plain text'
+    )
   }
   return safeStorage.encryptString(plain).toString('base64')
 }

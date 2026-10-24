@@ -24,7 +24,7 @@ export const GROUPS: Group[] = [
           { t: 'ul', items: [
             'Menjalankan pertama kali: klik **Connection** di toolbar untuk membuat koneksi.',
             'Lebar sidebar bisa diseret lewat garis pemisah di antara sidebar dan tab.',
-            'Aplikasi mengikuti tema terang/gelap Windows saat pertama kali dibuka. Ubah kapan saja dengan tombol **Dark/Light**.'
+            'Aplikasi mengikuti tema terang/gelap sistem operasi saat pertama kali dibuka. Ubah kapan saja dengan tombol **Dark/Light**.'
           ] },
           { t: 'tip', text: 'Tekan **F1** kapan saja untuk membuka dokumentasi ini.' }
         ]
@@ -54,7 +54,7 @@ export const GROUPS: Group[] = [
             'Pada sambungan pertama, sidik jari (fingerprint) server SSH disimpan. Jika kelak berubah, koneksi **ditolak** supaya Anda tidak tersambung ke server palsu.'
           ] },
           { t: 'p', text: '**Mengelola koneksi:** klik kanan sebuah koneksi untuk **Open connection / Close connection**, **New query**, **Run SQL file…**, **Edit connection…**, atau **Delete connection**. Klik dua kali pada koneksi untuk membukanya. Titik hijau di sebelah nama menandakan koneksi sedang terbuka.' },
-          { t: 'tip', text: 'Password (termasuk password SSH) disimpan terenkripsi memakai penyimpanan aman milik Windows, bukan sebagai teks biasa.' }
+          { t: 'tip', text: 'Password (termasuk password SSH) disimpan terenkripsi memakai penyimpanan aman milik sistem operasi (Windows, atau keyring seperti gnome-keyring / KWallet di Linux), bukan sebagai teks biasa. Di Linux, keyring harus terpasang dan terbuka agar password bisa disimpan.' }
         ]
       },
             {
@@ -406,9 +406,9 @@ export const GROUPS: Group[] = [
             {
         id: 'tema',
         title: 'Tema terang dan gelap',
-        summary: 'Mengikuti Windows, dan bisa diganti kapan saja.',
+        summary: 'Mengikuti sistem operasi, dan bisa diganti kapan saja.',
         blocks: [
-          { t: 'p', text: 'Klik **Dark** (atau **Light**) di toolbar, atau View → Switch to dark/light mode. Pilihan Anda diingat untuk pembukaan berikutnya. Saat pertama kali dibuka, tema mengikuti pengaturan Windows.' },
+          { t: 'p', text: 'Klik **Dark** (atau **Light**) di toolbar, atau View → Switch to dark/light mode. Pilihan Anda diingat untuk pembukaan berikutnya. Saat pertama kali dibuka, tema mengikuti pengaturan sistem operasi.' },
           { t: 'img', file: 'dark-mode', caption: 'Tema gelap.' }
         ]
       },

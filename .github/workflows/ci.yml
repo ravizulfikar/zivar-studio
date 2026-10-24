@@ -40,6 +40,31 @@ jobs:
       - name: Build the app
         run: npm run build
 
+  test-linux:
+    name: Typecheck, build and test (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ZIVAR_TEST_SKIP_SERVERS: '1'
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit and SQLite integration tests
+        run: npm test
+
+      - name: Build the app
+        run: npm run build
+
   e2e:
     name: End-to-end tests (real app)
     runs-on: windows-latest

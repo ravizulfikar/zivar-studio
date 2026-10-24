@@ -48,11 +48,22 @@ Browse, query, edit, design, migrate and diagram your databases from one window.
 
 Get the latest build from the [**Releases**](https://github.com/ravizulfikar/zivar-studio/releases/latest) page:
 
-- **`ZivarDatabaseStudio-Setup-<version>.exe`** — installer (per-user, choose the folder).
-- **`ZivarDatabaseStudio-Portable-<version>.exe`** — a single file; run it anywhere.
-- **`SHA256SUMS.txt`** — checksums to verify the downloads.
+| Platform | File | How to install |
+|---|---|---|
+| **Windows 10 / 11** (x64) | `ZivarDatabaseStudio-Setup-<version>.exe` | Run it (per-user install, you can choose the folder). |
+| | `ZivarDatabaseStudio-Portable-<version>.exe` | A single file; run it anywhere, no installation. |
+| **Debian / Ubuntu** (x64) | `ZivarDatabaseStudio-<version>-linux-amd64.deb` | `sudo apt install ./ZivarDatabaseStudio-<version>-linux-amd64.deb` |
+| **Fedora / openSUSE / RHEL** (x64) | `ZivarDatabaseStudio-<version>-linux-x86_64.rpm` | `sudo dnf install ./ZivarDatabaseStudio-<version>-linux-x86_64.rpm` |
+| **Any Linux** (x64) | `ZivarDatabaseStudio-<version>-linux-x64.AppImage` | `chmod +x` the file and run it. |
+| | `SHA256SUMS.txt` | Checksums to verify the downloads. |
 
-Zivar Database Studio currently targets **Windows 10 / 11 (x64)**. The installers are not code-signed, so Windows SmartScreen may show a warning the first time; choose *More info → Run anyway* if you trust the source.
+The Windows installers are not code-signed, so SmartScreen may show a warning the first time; choose *More info → Run anyway* if you trust the source.
+
+### Linux notes
+
+- **Passwords need a keyring.** Connection passwords are stored in the system keyring (gnome-keyring or KWallet through libsecret). Most desktop distributions have one; on a minimal system install `gnome-keyring` and sign in to it. Without a keyring the app refuses to save a password rather than store it as plain text.
+- **AppImage** needs FUSE 2: `sudo apt install libfuse2` (`libfuse2t64` on Ubuntu 24.04), or run it with `--appimage-extract-and-run`.
+- **Ubuntu 24.04 and newer** restrict the unprivileged user namespaces that Chromium's sandbox uses, which can stop an *AppImage* from starting ("The SUID sandbox helper binary was found, but is not configured correctly"). The `.deb` and `.rpm` packages install the sandbox helper properly and are not affected, so prefer them there. If you do want the AppImage, either allow the namespaces for it (an AppArmor profile) or start it with `--no-sandbox`; the app only loads its own local pages, but this does switch a layer of protection off.
 
 ## Build from source
 
@@ -66,7 +77,8 @@ npm ci
 npm run dev          # run in development with hot reload
 npm run typecheck    # TypeScript
 npm test             # unit and integration tests
-npm run dist         # build the installer and the portable exe into ./release
+npm run dist         # Windows: build the installer and the portable exe into ./release
+npm run dist:linux   # Linux: build the AppImage, .deb and .rpm into ./release (run it on Linux)
 ```
 
 Other scripts:
@@ -87,7 +99,7 @@ Releases are built and published by GitHub Actions ([`release.yml`](.github/work
 
 1. Set `version` in `package.json` (and in `package-lock.json`, e.g. with `npm version <x.y.z> --no-git-tag-version`) and commit.
 2. Tag and push: `git tag v1.0.0 && git push origin v1.0.0`.
-3. The workflow type-checks, tests, builds the installer and portable exe, creates the GitHub Release with generated notes, and attaches the files and their checksums.
+3. The workflow type-checks and tests on both platforms, builds the Windows installer and portable exe and the Linux AppImage, `.deb` and `.rpm`, starts each packaged app once as a smoke test, creates the GitHub Release with generated notes, and attaches all files with their checksums.
 
 The workflow refuses to publish if the tag does not match `package.json`. A tag with a suffix (`v1.1.0-beta.1`) is published as a pre-release. You can also run the workflow manually from the *Actions* tab to get the installers as downloadable artifacts without creating a release.
 
@@ -105,6 +117,7 @@ scripts        Screenshot and icon generators
 ## Known limitations
 
 - **SQL Server** support is implemented but has not been exercised against a real server.
+- **Linux** builds are checked in CI (they build, start and render the manual under a virtual display) but have had less hands-on use than the Windows ones.
 - **SQLite** cannot cancel a running query, and cannot change column types, the primary key or foreign keys of an existing table.
 - **MySQL** DDL is not transactional, so a failed schema change can be partially applied.
 - **Dump SQL** covers tables only (not views, functions or triggers); **structure synchronisation** works between databases of the same engine.

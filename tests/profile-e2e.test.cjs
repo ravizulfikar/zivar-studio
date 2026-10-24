@@ -60,7 +60,8 @@ async function withApp({ appdata, userDataDir }, fn) {
     try { await Promise.race([sleep(500), ws && ev0('window.close()').catch(() => {})]) } catch {}
     await Promise.race([exited, sleep(15000)])
     try { ws?.close() } catch {}
-    spawnSync('taskkill', ['/PID', String(app.pid), '/T', '/F'], { stdio: 'ignore' })
+    if (process.platform === 'win32') spawnSync('taskkill', ['/PID', String(app.pid), '/T', '/F'], { stdio: 'ignore' })
+    else app.kill('SIGKILL')
     await sleep(500)
   }
 }
