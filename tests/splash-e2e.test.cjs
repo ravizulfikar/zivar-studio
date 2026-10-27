@@ -103,9 +103,18 @@ const isMain = (t) => !t.url.startsWith('data:') && t.title !== SPLASH_TITLE
       await app.on(splash, async (ev, send) => {
         assert.equal(await ev(`document.querySelector('h1').textContent`), 'Zivar Database Studio')
         assert.equal(await ev(`document.querySelector('.ver').textContent`), `Version ${VERSION}`)
-        assert.ok((await ev(`document.getAnimations().length`)) >= 8, 'many animations are running')
-        assert.ok(await ev(`document.getAnimations().some(a => a.animationName === 'draw')`), 'the Z draws itself')
-        assert.ok(await ev(`document.getAnimations().some(a => a.animationName === 'slide')`), 'the loading bar slides')
+        // Some machines (CI runners among them) have "reduce motion" switched on. The page then jumps to its final picture
+        // by design, and there is nothing running to look at: check the picture instead of the animations.
+        const reduced = await ev(`matchMedia('(prefers-reduced-motion: reduce)').matches`)
+        console.log(`  reduced motion: ${reduced}; animations: ${await ev(`JSON.stringify(document.getAnimations().map(a => a.animationName))`)}`)
+        if (reduced) {
+          assert.ok(Number.parseFloat(await ev(`getComputedStyle(document.querySelector('.z')).strokeDashoffset`)) < 0.01, 'reduced motion: the Z is already drawn')
+          assert.equal(await ev(`new DOMMatrix(getComputedStyle(document.querySelector('.n1')).transform).a`), 1, 'reduced motion: the nodes are already in place')
+        } else {
+          assert.ok((await ev(`document.getAnimations().length`)) >= 8, 'many animations are running')
+          assert.ok(await ev(`document.getAnimations().some(a => a.animationName === 'draw')`), 'the Z draws itself')
+          assert.ok(await ev(`document.getAnimations().some(a => a.animationName === 'slide')`), 'the loading bar slides')
+        }
         if (shotsDir) {
           fs.mkdirSync(shotsDir, { recursive: true })
           for (const [i, at] of [300, 900, 1700, 3200].entries()) {
