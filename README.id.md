@@ -17,7 +17,7 @@ Jelajahi, query, edit, rancang, pindahkan, dan gambarkan database dari satu jend
 ## Fitur
 
 - **Koneksi**: PostgreSQL, MySQL / MariaDB, SQL Server, dan SQLite. Bisa dikelompokkan dalam folder, diberi warna (tandai server produksi), memakai SSL/TLS, dan SSH tunnel (password atau private key). Password disimpan terenkripsi dengan penyimpanan aman sistem operasi.
-- **Pohon objek**: database / schema → tabel, view, materialized view, fungsi, dan query tersimpan. Ada kotak cari, menu klik kanan, dan panel detail.
+- **Pohon objek**: database / schema → tabel, view, materialized view, fungsi, dan query tersimpan. Ada kotak cari yang menemukan tabel, view, fungsi, dan query tersimpan (lewat nama, dan query juga lewat isi SQL-nya), menu klik kanan, dan panel detail.
 - **Grid data**: paging, pengurutan, filter `WHERE`, dan pengeditan yang aman. Perubahan ditampung dulu, lalu ditulis dalam satu transaksi lewat **Apply**. Ada cari & ganti antar sel dan penampil sel (teks, JSON, hex, gambar).
 - **Editor SQL**: autocomplete yang mengenal skema, jalankan bagian terpilih (`Ctrl+Enter`), stop, explain, beautify / minify, snippets (bawaan dan milik Anda), riwayat query, dan query tersimpan per database.
 - **Editor JSON**: teks dan pohon berdampingan. Bisa cari, edit di pohon, format, minify, dan urutkan key. Angka besar dan urutan key tetap persis.
@@ -25,7 +25,7 @@ Jelajahi, query, edit, rancang, pindahkan, dan gambarkan database dari satu jend
 - **Impor / ekspor**: impor CSV, TSV, Excel, dan JSON / NDJSON dengan pemetaan kolom. Ekspor ke Excel, CSV, JSON, atau SQL `INSERT`.
 - **Migrasi**: jalankan berkas `.sql`, dump ke SQL, **transfer data antar koneksi (bahkan antar jenis database)**, dan sinkronisasi struktur tabel.
 - **ER diagram**: diagram tabel dan relasi yang bisa digeser dan di-zoom, dengan ekspor SVG / PNG.
-- **Lainnya**: tema terang dan gelap, dokumentasi bawaan yang bisa dicari (`F1`, berbahasa Indonesia), dan versi portable yang tidak perlu instalasi.
+- **Lainnya**: splash screen beranimasi saat dibuka, tema terang dan gelap, dokumentasi bawaan yang bisa dicari (`F1`, berbahasa Indonesia), dan versi portable yang tidak perlu instalasi.
 
 ## Unduh
 

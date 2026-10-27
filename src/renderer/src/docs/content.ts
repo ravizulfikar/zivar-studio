@@ -69,7 +69,16 @@ export const GROUPS: Group[] = [
             '**Functions** — fungsi dan prosedur. Klik dua kali untuk melihat definisinya sebagai SQL.',
             '**Queries** — query yang Anda simpan untuk database ini (lihat bagian *Query tersimpan, riwayat*). Klik dua kali untuk membukanya lagi.'
           ] },
-          { t: 'p', text: 'Angka di sebelah nama folder adalah jumlah objeknya. Kotak **Search connections / objects** di atas pohon menyaring koneksi dan objek berdasarkan nama.' },
+          { t: 'p', text: 'Angka di sebelah nama folder adalah jumlah objeknya.' },
+          { t: 'p', text: '**Mencari.** Ketik di kotak **Search connections / objects** di atas pohon untuk mencari **koneksi, tabel, view, materialized view, fungsi, dan query tersimpan** sekaligus. Hasilnya dikelompokkan per koneksi dan database, dengan bagian yang cocok diberi sorotan.' },
+          { t: 'img', file: 'sidebar-search', caption: 'Mencari “kota”: satu view dan satu query tersimpan ditemukan lewat namanya. Bagian yang cocok disorot.' },
+          { t: 'ul', items: [
+            'Beberapa kata harus cocok **semuanya**, urutannya bebas, dan huruf besar/kecil diabaikan: “report signup” menemukan query bernama “Monthly signup report”.',
+            'Query tersimpan dicari lewat **nama dan isi SQL-nya**. Tabel, view, dan fungsi dicari lewat namanya (untuk PostgreSQL termasuk nama schema, misalnya `old.legacy`).',
+            'Klik sebuah hasil untuk memilihnya; klik dua kali untuk membukanya (data untuk tabel dan view, definisi untuk fungsi, editor untuk query). Klik kanan menampilkan menu yang sama seperti di pohon.',
+            'Yang bisa dicari hanyalah database yang **sudah dimuat** oleh pohon, karena pencarian tidak diam-diam menghubungi server Anda. Jika ada koneksi yang belum terbuka, di bawah hasil muncul keterangannya beserta tombol **Search all connections** yang membuka koneksi itu dan membaca isinya. Tombol Refresh memperbarui isi yang sudah diingat.',
+            'Klik dua kali sebuah *koneksi* di hasil untuk menutup pencarian dan membukanya di pohon. **Esc** (atau tombol ×) mengosongkan kotak cari.'
+          ] },
           { t: 'img', file: 'tree-menu', caption: 'Menu klik kanan pada database.' },
           { t: 'table', head: ['Menu klik kanan database', 'Fungsi'], rows: [
             ['**Open objects list**', 'Membuka daftar semua objek dalam satu tab.'],

@@ -88,3 +88,6 @@ jobs:
 
       - name: Profile compatibility (data of earlier versions)
         run: node tests/run.cjs --ui --only=profile-e2e
+
+      - name: Start-up splash
+        run: node tests/run.cjs --ui --only=splash-e2e

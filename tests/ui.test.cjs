@@ -504,6 +504,74 @@ const waitFor = async (expr, what, ms = 8000) => {
   assert.deepEqual(png, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 'a real PNG file')
   console.log('ER diagram: keys-only, search, SVG and PNG export OK')
 
+  // ── sidebar search: tables, views, functions and saved queries ──
+  const searchInput = `document.querySelector('.search input')`
+  const typeSearch = (text) => ev(`__setInput(${searchInput}, ${JSON.stringify(text)})`)
+  const srLabels = `[...document.querySelectorAll('.sr-item .label')].map(e => e.textContent)`
+  // the tree must look the same after a search as before it: make sure something is open to lose
+  const openMains = () => ev(`[...document.querySelectorAll('.node .label')].filter(l => l.offsetParent !== null && l.textContent === 'main').length`)
+  if ((await openMains()) === 0) {
+    await ev(`__fire(__byText('.node.conn', 'Test SQLite'), 'dblclick')`)
+    await waitFor(`[...document.querySelectorAll('.node .label')].some(l => l.offsetParent !== null && l.textContent === 'main')`, 'a database open in the tree')
+  }
+  const mainsBefore = await openMains()
+  // ... down to a table listed in an open Tables folder (whatever the earlier steps left behind)
+  const treeTables = `[...document.querySelectorAll('.node.leaf:not(.sr-item)')].filter(e => e.offsetParent !== null).length`
+  const tablesChev = `(() => { const l = __byText('.node.folder .label', 'Tables'); return l ? l.parentElement.querySelector('.chev').textContent.trim() : null })()`
+  if ((await ev(tablesChev)) === null) {
+    await ev(`__fire(__byText('.node .label', 'main').parentElement, 'click')`) // expand the database
+    await waitFor(`${tablesChev} !== null`, 'the Tables folder')
+  }
+  if ((await ev(tablesChev)) !== '▾') await ev(`__fire(__byText('.node.folder .label', 'Tables').parentElement, 'click')`) // open it
+  await waitFor(`${tablesChev} === '▾' && ${treeTables} > 0`, 'a table listed in the tree')
+  const treeTablesBefore = await ev(treeTables)
+  const savedId = await ev(`window.api.savedSave(${JSON.stringify({ name: 'Monthly signup report', sql: 'select count(*) as signups from users', connId: 't1', connName: 'Test SQLite', container: 'main' })}).then(r => (r.ok ? r.data : null))`)
+  assert.ok(savedId, 'a saved query to look for')
+  await ev(`__byText('button.tool', 'Refresh').click()`) // the sidebar learns about the saved query
+  await typeSearch('users')
+  await waitFor(`${srLabels}.some(t => t.startsWith('users'))`, 'the users table is found')
+  assert.ok(await ev(`${srLabels}.some(t => t.startsWith('Monthly signup report'))`), 'a saved query is found through its SQL text')
+  assert.ok(await ev(`!!document.querySelector('.sr-group') && document.querySelector('.sr-group').textContent.includes('Test SQLite › main')`), 'results are grouped under connection › database')
+  assert.ok(await ev(`[...document.querySelectorAll('.sr-item mark')].some(m => m.textContent.toLowerCase() === 'users')`), 'the matching part is highlighted')
+  // a connection that has not been opened can only be searched when you ask for it
+  await waitFor(`!!document.querySelector('.sr-foot')`, 'the hint about connections that are not loaded')
+  assert.equal(await ev(`document.querySelector('.sr-group[title^="Transfer target"]') === null`), true, 'nothing from an unopened connection yet')
+  await ev(`[...document.querySelectorAll('.sr-foot button')].find(b => b.textContent.includes('Search all connections')).click()`)
+  await waitFor(`[...document.querySelectorAll('.sr-group')].some(g => g.textContent.includes('Transfer target'))`, 'tables of the other connections are found after "Search all connections"', 30000)
+  await waitFor(`!document.querySelector('.sr-foot')`, 'the hint goes away once everything is loaded', 30000)
+  // all words must match, in any order; the query is found by its name as well
+  await typeSearch('report signup')
+  await waitFor(`${srLabels}.length === 1 && ${srLabels}[0].startsWith('Monthly signup report')`, 'two words in any order')
+  await typeSearch('signup zzzzqq')
+  await waitFor(`/No table, view, function or saved query matches/.test(document.querySelector('.sr').textContent)`, 'a message when nothing matches')
+  // opening a result
+  await typeSearch('signups')
+  await waitFor(`${srLabels}.length === 1`, 'the query is found by a word that only its SQL contains')
+  await ev(`__fire(document.querySelector('.sr-item'), 'dblclick')`)
+  await waitFor(`[...document.querySelectorAll('.tab-title')].some(t => t.textContent === 'Monthly signup report')`, 'double-clicking a saved query opens it')
+  await typeSearch('people')
+  await waitFor(`${srLabels}.some(t => t.startsWith('people'))`, 'the people table is found')
+  // (the same table name exists in the other connections too: open the one under "Test SQLite")
+  await ev(`__fire([...document.querySelectorAll('.sr > div')].find(g => g.querySelector('.sr-group')?.textContent.includes('Test SQLite')).querySelector('.sr-item'), 'dblclick')`)
+  await waitFor(`[...document.querySelectorAll('.tab.active .tab-title')].some(t => t.textContent === 'people') && __pane().querySelectorAll('table.grid tbody tr').length >= 1`, 'double-clicking a table opens its data')
+  // connections are still found by name, shown as plain rows; opening one leaves the search
+  await typeSearch('sync')
+  await waitFor(`!!__byText('.node.conn', 'Sync target')`, 'a connection is found by its name')
+  assert.equal(await ev(`document.querySelectorAll('.sr-head').length >= 1 && !!__byText('.sr-head', 'Connections')`), true)
+  await ev(`__fire(__byText('.node.conn', 'Sync target'), 'dblclick')`)
+  await waitFor(`${searchInput}.value === ''`, 'opening a connection from the results clears the search')
+  await waitFor(`!document.querySelector('.sr')`, 'the results are gone')
+  assert.equal(await openMains(), mainsBefore + 1, 'the tree is as it was (the databases you had open stay open), plus the connection just opened')
+  assert.equal(await ev(treeTables), treeTablesBefore, 'the tables listed in an open folder are still listed')
+  // Esc clears the box
+  await typeSearch('users')
+  await waitFor(`!!document.querySelector('.sr')`, 'results again')
+  await ev(`${searchInput}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
+  await waitFor(`!document.querySelector('.sr') && ${searchInput}.value === ''`, 'Esc clears the search')
+  await ev(`window.api.savedDelete(${JSON.stringify(savedId)})`)
+  await ev(`__byText('button.tool', 'Refresh').click()`)
+  console.log('sidebar search: tables, saved queries (name and SQL), unopened connections, highlighting, opening results, Esc OK')
+
   // ── Help: documentation page and About ──
   const VERSION = require('../package.json').version
   const helpItem = async (label) => {

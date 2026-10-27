@@ -23,7 +23,7 @@ Browse, query, edit, design, migrate and diagram your databases from one window.
 | | |
 |---|---|
 | **Connections** | PostgreSQL, MySQL / MariaDB, SQL Server and SQLite. Folders and colour tags (mark production at a glance), SSL/TLS, and SSH tunnels with password or private key. Passwords are encrypted with the operating system's secure storage. |
-| **Object tree** | Databases / schemas → tables, views, materialized views, functions and your saved queries. Filter box, context menus, and a details panel. |
+| **Object tree** | Databases / schemas → tables, views, materialized views, functions and your saved queries. A search box that finds tables, views, functions and saved queries (by name, and queries by their SQL too), context menus, and a details panel. |
 | **Data grid** | Paging, sorting, `WHERE` filter, and safe editing: changes are staged, then written in one transaction with **Apply**. Find & replace across cells, and a cell viewer for text, JSON, hex and images. |
 | **SQL editor** | Schema-aware autocomplete, run selection (`Ctrl+Enter`), stop, explain, beautify / minify, snippets (built-in and your own), query history and per-database saved queries. |
 | **JSON editor** | Text and tree side by side: search, edit in the tree, format, minify, sort keys. Exact big numbers and key order are preserved. |
@@ -31,7 +31,7 @@ Browse, query, edit, design, migrate and diagram your databases from one window.
 | **Import / export** | Import CSV, TSV, Excel and JSON / NDJSON with column mapping. Export to Excel, CSV, JSON or SQL `INSERT`. |
 | **Migration** | Run `.sql` files (understands `$$`, `DELIMITER`, `GO`), dump to SQL, **transfer data between connections — even across engines** — and synchronise table structure. |
 | **ER diagram** | Draggable, zoomable diagram of your tables and relations, with SVG / PNG export. |
-| **And** | Light and dark themes, a built-in searchable manual (`F1`, in Indonesian), and a portable build that needs no installation. |
+| **And** | An animated start-up splash, light and dark themes, a built-in searchable manual (`F1`, in Indonesian), and a portable build that needs no installation. |
 
 <details>
 <summary>More screenshots</summary>

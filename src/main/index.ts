@@ -23,6 +23,8 @@ import { runScript } from './script'
 import { transferTables } from './transfer'
 import * as store from './store'
 import { legacyProfile } from './userData'
+import { openSplash } from './splash'
+import { shouldShowSplash, splashMinMs } from './splashContent'
 import { existsSync } from 'node:fs'
 
 // Keep using the data folder of earlier builds (before the rename) so saved connections and queries survive.
@@ -195,10 +197,13 @@ function registerIpc(): void {
   handle('snippets:delete', (id: string) => library.snippets.delete(id))
 }
 
+let firstWindow = true
+
 function createWindow(): void {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
+    show: false, // shown once the page is drawn (and the splash, if any, has been seen)
     title: 'Zivar Database Studio',
     icon: join(__dirname, '../../resources/icon.png'),
     webPreferences: {
@@ -222,6 +227,21 @@ function createWindow(): void {
   } else {
     void win.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  // The start-up splash is for the first window of a normal start only.
+  const automated = app.commandLine.hasSwitch('remote-debugging-port')
+  const splash = firstWindow && shouldShowSplash(process.env, automated) ? openSplash() : null
+  firstWindow = false
+  const drawn = new Promise<void>((resolve) => {
+    win.once('ready-to-show', () => resolve())
+    win.webContents.once('did-fail-load', () => resolve()) // show the window anyway: it will say what went wrong
+    setTimeout(resolve, 15000) // never hold the app hostage
+  })
+  void Promise.all([drawn, splash?.shown ?? Promise.resolve(0)]).then(async ([, shownAt]) => {
+    if (splash) await new Promise((r) => setTimeout(r, Math.max(0, splashMinMs(process.env) - (Date.now() - shownAt))))
+    if (!win.isDestroyed()) win.show()
+    await splash?.dismiss()
+  })
 }
 
 app.whenReady().then(() => {

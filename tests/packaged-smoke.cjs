@@ -2,6 +2,7 @@
 // window title, render the built-in manual with all its screenshots, and show the right About box.
 //   node tests/packaged-smoke.cjs <path to the executable> <expected version> <expected product name>
 // On Linux, run it under a virtual display:  xvfb-run -a node tests/packaged-smoke.cjs ...
+// ZIVAR_SPLASH=1 makes the app show its splash first, so the packaged splash path is exercised too.
 const { spawn } = require('node:child_process')
 const fs = require('node:fs')
 const os = require('node:os')
@@ -49,12 +50,12 @@ const waitFor = async (expr, what, ms = 20000) => {
     if (failedToStart) throw failedToStart
     try {
       targets = await (await fetch(`http://127.0.0.1:${PORT}/json`)).json()
-      if (targets.find((t) => t.type === 'page')) break
+      if (targets.find((t) => t.type === 'page' && !t.url.startsWith('data:'))) break // not the splash page
     } catch {}
     await sleep(250)
   }
   if (!targets) throw new Error('the app did not open a window')
-  ws = new WebSocket(targets.find((t) => t.type === 'page').webSocketDebuggerUrl)
+  ws = new WebSocket(targets.find((t) => t.type === 'page' && !t.url.startsWith('data:')).webSocketDebuggerUrl)
   await new Promise((r) => (ws.onopen = r))
   ws.onmessage = (m) => { const d = JSON.parse(m.data); const p = pending.get(d.id); if (p) { pending.delete(d.id); d.error ? p.rej(new Error(d.error.message)) : p.res(d.result) } }
   await send('Runtime.enable')

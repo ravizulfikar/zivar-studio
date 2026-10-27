@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { JSX, ReactNode } from 'react'
 import type { ConnectionConfig, DbKind, DbObject, DbObjectType, SavedQuery } from '@shared/types'
 import { errMsg, unwrap } from './api'
@@ -15,6 +15,7 @@ import {
   KindBadge
 } from './Icons'
 import { ContextMenu, type ContextMenuState, type MenuItem } from './MenuBar'
+import { highlight, matchesAll, objectLabel, searchAll, searchWords, type IndexedConnection } from '@shared/sidebarSearch'
 
 export type Selection =
   | { type: 'conn'; connId: string }
@@ -64,10 +65,47 @@ const isSel = (s: Selection | null, t: Selection['type'], connId: string, contai
   return true
 }
 
+/** What the tree has loaded so far, by connection, so the search can look into databases that are not expanded. */
+type IndexData = Record<string, IndexedConnection>
+
+interface IndexApi {
+  containers: (connId: string, list: string[]) => void
+  objects: (connId: string, container: string, list: DbObject[]) => void
+}
+
+/** The menu of a table / view / function, wherever it is listed. */
+function objectMenu(p: Props, connId: string, container: string, o: DbObject): MenuItem[] {
+  const open = (mode: OpenRequest['mode']): void => p.onOpenObject({ connId, container, obj: o, mode })
+  return [
+    ...(o.type === 'function'
+      ? []
+      : [
+          { label: 'Open data', onClick: () => open('data') },
+          { label: o.type === 'table' ? 'Design table' : 'Structure', onClick: () => open('structure') },
+          ...(o.type === 'table' ? [{ label: 'Import data…', onClick: () => p.onImportData(connId, container, o) }] : [])
+        ]),
+    ...(o.type !== 'table' ? [{ label: 'Definition (SQL)', onClick: () => open('definition') }] : []),
+    { separator: true, label: '' },
+    { label: 'New query here', onClick: () => p.onNewQuery(connId, container) }
+  ]
+}
+
+/** Text with the parts that matched the search marked. */
+function Hl({ text, words }: { text: string; words: string[] }): JSX.Element {
+  return (
+    <>
+      {highlight(text, words).map((seg, i) => (seg.hit ? <mark key={i}>{seg.text}</mark> : <Fragment key={i}>{seg.text}</Fragment>))}
+    </>
+  )
+}
+
 export function Sidebar(props: Props): JSX.Element {
   const [filter, setFilter] = useState('')
   const [menu, setMenu] = useState<ContextMenuState | null>(null)
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+  const [index, setIndex] = useState<IndexData>({})
+  const [scanning, setScanning] = useState(false)
+  const [scanErrors, setScanErrors] = useState<Record<string, string>>({})
 
   const showMenu: ShowMenu = useCallback((e, items) => {
     e.preventDefault()
@@ -75,18 +113,75 @@ export function Sidebar(props: Props): JSX.Element {
     setMenu({ x: e.clientX, y: e.clientY, items })
   }, [])
 
-  const f = filter.trim().toLowerCase()
+  // Every node that loads its list reports it here.
+  const indexApi = useMemo<IndexApi>(
+    () => ({
+      containers: (connId, list) => setIndex((prev) => ({ ...prev, [connId]: { containers: list, objects: prev[connId]?.objects ?? {} } })),
+      objects: (connId, container, list) =>
+        setIndex((prev) => ({ ...prev, [connId]: { containers: prev[connId]?.containers ?? [], objects: { ...(prev[connId]?.objects ?? {}), [container]: list } } }))
+    }),
+    []
+  )
+  // A refresh makes the expanded nodes reload (and report again). What the search remembers about the others
+  // (a database you collapsed, a connection you closed) is read again here, so it does not go stale or vanish.
+  const remembered = useRef(index)
+  remembered.current = index
+  const firstRun = useRef(true)
+  useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false
+      return
+    }
+    for (const [connId, data] of Object.entries(remembered.current)) {
+      for (const container of Object.keys(data.objects)) {
+        void window.api.objects(connId, container).then((r) => {
+          if (r.ok) indexApi.objects(connId, container, r.data)
+        })
+      }
+    }
+  }, [props.refreshKey, indexApi])
+
+  const words = useMemo(() => searchWords(filter), [filter])
+  const searching = words.length > 0
+
   const groups = useMemo(() => {
     const map = new Map<string, ConnectionConfig[]>()
     const sorted = [...props.connections].sort((a, b) => a.name.localeCompare(b.name))
     for (const c of sorted) {
-      if (f && !c.name.toLowerCase().includes(f) && !(c.group ?? '').toLowerCase().includes(f)) continue
       const key = c.group?.trim() ?? ''
       map.set(key, [...(map.get(key) ?? []), c])
     }
     // Named groups first (alphabetical), loose connections last.
     return [...map.entries()].sort(([a], [b]) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)))
-  }, [props.connections, f])
+  }, [props.connections])
+  /** While searching, only these connections (matching by name or folder) are shown in the tree part. */
+  const shown = useMemo(() => new Set(props.connections.filter((c) => !searching || matchesAll(`${c.name} ${c.group ?? ''}`, words)).map((c) => c.id)), [props.connections, words, searching])
+
+  const results = useMemo(() => (searching ? searchAll(words, props.connections, index, props.savedQueries) : null), [searching, words, props.connections, index, props.savedQueries])
+
+  // Connections whose tables, views and functions have not all been loaded yet cannot be searched.
+  const unsearched = props.connections.filter((c) => {
+    const data = index[c.id]
+    return !data || data.containers.some((ct) => !(ct in data.objects))
+  })
+
+  /** Opens every connection that has not been searched and reads the objects of all its databases. */
+  const searchEverywhere = async (): Promise<void> => {
+    setScanning(true)
+    setScanErrors({})
+    for (const c of unsearched) {
+      try {
+        await unwrap(window.api.open(c.id))
+        const known = index[c.id]
+        const containers = known?.containers.length ? known.containers : await unwrap(window.api.containers(c.id))
+        indexApi.containers(c.id, containers)
+        for (const ct of containers) if (!known || !(ct in known.objects)) indexApi.objects(c.id, ct, await unwrap(window.api.objects(c.id, ct)))
+      } catch (e) {
+        setScanErrors((prev) => ({ ...prev, [c.id]: errMsg(e) }))
+      }
+    }
+    setScanning(false)
+  }
 
   const toggleGroup = (g: string): void =>
     setCollapsedGroups((prev) => {
@@ -95,40 +190,138 @@ export function Sidebar(props: Props): JSX.Element {
       return next
     })
 
+  const kindOf = (connId: string): DbKind | undefined => props.connections.find((c) => c.id === connId)?.kind
+
   return (
     <aside className="sidebar">
       <div className="search">
         <IconSearch size={14} />
-        <input placeholder="Search connections / objects" value={filter} onChange={(e) => setFilter(e.target.value)} />
+        <input
+          placeholder="Search connections / objects"
+          title="Finds connections, tables, views, functions and saved queries. Several words must all match."
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          onKeyDown={(e) => e.key === 'Escape' && setFilter('')}
+        />
+        {filter && (
+          <button className="search-clear" title="Clear (Esc)" onClick={() => setFilter('')}>
+            ×
+          </button>
+        )}
       </div>
       <div className="tree">
+        {searching && shown.size > 0 && <div className="sr-head">Connections</div>}
         {groups.map(([group, conns]) => (
-          <div key={group || '__none'}>
+          <div key={group || '__none'} hidden={!conns.some((c) => shown.has(c.id))}>
             {group && (
               <div className="node group" onClick={() => toggleGroup(group)}>
                 <span className="chev">{collapsedGroups.has(group) ? '▸' : '▾'}</span>
                 <IconFolder size={15} className="ic folder" />
                 <span className="label">{group}</span>
-                <span className="count">{conns.length}</span>
+                <span className="count">{conns.filter((c) => shown.has(c.id)).length}</span>
               </div>
             )}
             {!collapsedGroups.has(group) &&
               conns.map((c) => (
-                <div key={c.id} className={group ? 'indent' : ''}>
-                  <ConnectionNode cfg={c} filter={f} showMenu={showMenu} {...props} />
+                <div key={c.id} className={group ? 'indent' : ''} hidden={!shown.has(c.id)}>
+                  <ConnectionNode cfg={c} filter={searching ? filter.trim().toLowerCase() : ''} showMenu={showMenu} index={indexApi} compact={searching} clearSearch={() => setFilter('')} {...props} />
                 </div>
               ))}
           </div>
         ))}
         {props.connections.length === 0 && <div className="muted pad">No connections yet. Use “Connection” to add one.</div>}
-        {props.connections.length > 0 && groups.length === 0 && <div className="muted pad">No match.</div>}
+
+        {searching && results && (
+          <div className="sr">
+            <div className="sr-head">
+              Tables, views, functions and queries{results.total > 0 ? ` · ${results.total}` : ''}
+            </div>
+            {results.groups.map((g) => {
+              const kind = kindOf(g.connId)
+              return (
+                <div key={g.key}>
+                  <div className="node sr-group" title={g.container ? `${g.connName} › ${g.container}` : `${g.connName} · saved for every database`}>
+                    {kind && <KindBadge kind={kind} />}
+                    <span className="label">
+                      {g.connName}
+                      {g.container ? ` › ${g.container}` : ''}
+                    </span>
+                    {g.container === null && <span className="count">any database</span>}
+                  </div>
+                  {g.items.map((item) =>
+                    item.kind === 'object' ? (
+                      <div
+                        key={`${item.container}|${item.obj.type}|${item.obj.schema ?? ''}|${item.obj.name}|${item.obj.args ?? ''}`}
+                        className={`node leaf sr-item ${isSel(props.selection, 'object', g.connId, item.container, item.obj) ? 'selected' : ''}`}
+                        title={`${item.label}  (${item.obj.type === 'matview' ? 'materialized view' : item.obj.type}) — double-click to open`}
+                        onClick={() => props.onSelect({ type: 'object', connId: g.connId, container: item.container, obj: item.obj })}
+                        onDoubleClick={() => props.onOpenObject({ connId: g.connId, container: item.container, obj: item.obj, mode: item.obj.type === 'function' ? 'definition' : 'data' })}
+                        onContextMenu={(e) => {
+                          props.onSelect({ type: 'object', connId: g.connId, container: item.container, obj: item.obj })
+                          showMenu(e, objectMenu(props, g.connId, item.container, item.obj))
+                        }}
+                      >
+                        <ObjectIcon type={item.obj.type} />
+                        <span className="label">
+                          <Hl text={item.label} words={words} />
+                        </span>
+                        <span className="count">{item.obj.type === 'matview' ? 'mat. view' : item.obj.type}</span>
+                      </div>
+                    ) : (
+                      <div
+                        key={item.query.id}
+                        className="node leaf sr-item"
+                        title={item.query.sql.slice(0, 300)}
+                        onDoubleClick={() => props.onOpenQuery(item.query)}
+                        onContextMenu={(e) =>
+                          showMenu(e, [
+                            { label: 'Open', onClick: () => props.onOpenQuery(item.query) },
+                            { label: 'Delete', onClick: () => props.onDeleteQuery(item.query) }
+                          ])
+                        }
+                      >
+                        <IconQuery size={15} className="ic query" />
+                        <span className="label">
+                          <Hl text={item.label} words={words} />
+                          <span className="sr-sql"> {item.query.sql.replace(/\s+/g, ' ').slice(0, 80)}</span>
+                        </span>
+                        <span className="count">query</span>
+                      </div>
+                    )
+                  )}
+                </div>
+              )
+            })}
+            {results.total === 0 && <div className="muted pad small-note">No table, view, function or saved query matches “{filter.trim()}”.</div>}
+            {results.total > results.shown && (
+              <div className="muted pad small-note">
+                Showing the first {results.shown} of {results.total}. Type more to narrow it down.
+              </div>
+            )}
+            {unsearched.length > 0 && (
+              <div className="sr-foot">
+                <div className="muted small-note">
+                  {unsearched.length} of {props.connections.length} connection(s) are not fully loaded, so some of their tables, views and functions cannot be found yet.
+                </div>
+                <button disabled={scanning} onClick={() => void searchEverywhere()}>
+                  {scanning ? 'Searching…' : 'Search all connections'}
+                </button>
+                {Object.entries(scanErrors).map(([id, err]) => (
+                  <div key={id} className="msg error small">
+                    {props.connections.find((c) => c.id === id)?.name}: {err}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
       {menu && <ContextMenu state={menu} onClose={() => setMenu(null)} />}
     </aside>
   )
 }
 
-type NodeProps = Props & { cfg: ConnectionConfig; filter: string; showMenu: ShowMenu }
+type NodeProps = Props & { cfg: ConnectionConfig; filter: string; showMenu: ShowMenu; index: IndexApi; /** While searching, a connection is a plain row: its objects are listed in the results. */ compact: boolean; clearSearch: () => void }
 
 function ConnectionNode({ cfg, filter, showMenu, ...p }: NodeProps): JSX.Element {
   const [containers, setContainers] = useState<string[] | null>(null)
@@ -137,7 +330,10 @@ function ConnectionNode({ cfg, filter, showMenu, ...p }: NodeProps): JSX.Element
 
   const load = useCallback(async (): Promise<void> => {
     await unwrap(window.api.open(cfg.id))
-    setContainers(await unwrap(window.api.containers(cfg.id)))
+    const list = await unwrap(window.api.containers(cfg.id))
+    setContainers(list)
+    p.index.containers(cfg.id, list)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cfg.id])
 
   const toggle = async (): Promise<void> => {
@@ -178,7 +374,10 @@ function ConnectionNode({ cfg, filter, showMenu, ...p }: NodeProps): JSX.Element
         className={`node conn ${cfg.color ? 'tinted' : ''} ${isSel(p.selection, 'conn', cfg.id) ? 'selected' : ''}`}
         style={cfg.color ? ({ '--c': cfg.color } as React.CSSProperties) : undefined}
         onClick={() => p.onSelect({ type: 'conn', connId: cfg.id })}
-        onDoubleClick={() => void toggle()}
+        onDoubleClick={() => {
+          if (p.compact) p.clearSearch() // open it in the tree, where its databases can be browsed
+          void toggle()
+        }}
         onContextMenu={(e) => {
           p.onSelect({ type: 'conn', connId: cfg.id })
           showMenu(e, items)
@@ -188,6 +387,7 @@ function ConnectionNode({ cfg, filter, showMenu, ...p }: NodeProps): JSX.Element
           className="chev"
           onClick={(e) => {
             e.stopPropagation()
+            if (p.compact) p.clearSearch()
             void toggle()
           }}
         >
@@ -201,7 +401,11 @@ function ConnectionNode({ cfg, filter, showMenu, ...p }: NodeProps): JSX.Element
       </div>
       {error && <div className="msg error small">{error}</div>}
       {expanded &&
-        containers?.map((ct) => <ContainerNode key={ct} cfg={cfg} container={ct} filter={filter} showMenu={showMenu} {...p} />)}
+        containers?.map((ct) => (
+          <div key={ct} hidden={p.compact}>
+            <ContainerNode cfg={cfg} container={ct} filter={filter} showMenu={showMenu} {...p} />
+          </div>
+        ))}
     </div>
   )
 }
@@ -217,11 +421,6 @@ function foldersFor(kind: DbKind): { key: FolderKey; label: string }[] {
     ...(kind !== 'sqlite' ? [{ key: 'function' as const, label: 'Functions' }] : []),
     { key: 'queries', label: 'Queries' }
   ]
-}
-
-function objectLabel(o: DbObject, container: string): string {
-  if (o.type === 'function') return `${o.name}(${o.args ?? ''})`
-  return o.schema && o.schema !== container ? `${o.schema}.${o.name}` : o.name
 }
 
 function ObjectIcon({ type }: { type: DbObjectType }): JSX.Element {
@@ -244,7 +443,10 @@ function ContainerNode({ cfg, container, filter, showMenu, ...p }: NodeProps & {
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async (): Promise<void> => {
-    setObjects(await unwrap(window.api.objects(cfg.id, container)))
+    const list = await unwrap(window.api.objects(cfg.id, container))
+    setObjects(list)
+    p.index.objects(cfg.id, container, list)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cfg.id, container])
 
   const toggle = async (): Promise<void> => {
@@ -277,18 +479,7 @@ function ContainerNode({ cfg, container, filter, showMenu, ...p }: NodeProps & {
 
   const open = (o: DbObject, mode: OpenRequest['mode']): void => p.onOpenObject({ connId: cfg.id, container, obj: o, mode })
 
-  const leafMenu = (o: DbObject): MenuItem[] => [
-    ...(o.type === 'function'
-      ? []
-      : [
-          { label: 'Open data', onClick: () => open(o, 'data') },
-          { label: o.type === 'table' ? 'Design table' : 'Structure', onClick: () => open(o, 'structure') },
-          ...(o.type === 'table' ? [{ label: 'Import data…', onClick: () => p.onImportData(cfg.id, container, o) }] : [])
-        ]),
-    ...(o.type !== 'table' ? [{ label: 'Definition (SQL)', onClick: () => open(o, 'definition') }] : []),
-    { separator: true, label: '' },
-    { label: 'New query here', onClick: () => p.onNewQuery(cfg.id, container) }
-  ]
+  const leafMenu = (o: DbObject): MenuItem[] => objectMenu(p, cfg.id, container, o)
 
   const renderFolder = (key: FolderKey, label: string): ReactNode => {
     const items = key === 'queries' ? null : (objects ?? []).filter((o) => o.type === key && match(o.name))

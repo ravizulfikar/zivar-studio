@@ -167,6 +167,7 @@ async function setFile(file) {
   const saved = (name, sql) => ev(`window.api.savedSave(${JSON.stringify({ name, sql, connId: 't1', connName: 'Toko Kopi', container: 'main' })}).then(r => r.ok)`)
   await saved('Stok menipis', 'SELECT sku, name, stock FROM products WHERE stock < 15 ORDER BY stock')
   await saved('Omzet per kota', 'SELECT * FROM v_penjualan_per_kota ORDER BY omzet DESC')
+  await saved('Pesanan terbaru', 'SELECT * FROM orders ORDER BY ordered_at DESC LIMIT 20')
   await ev(`localStorage.setItem('zivar-theme', 'light'); location.reload()`)
   await sleep(1500)
   await ev(HELPERS)
@@ -189,6 +190,14 @@ async function setFile(file) {
   await waitFor(`!!document.querySelector('.popup.context')`, 'context menu')
   await region('tree-menu', 0, 92, 520, 560)
   await dismiss()
+
+  // sidebar search: tables and saved queries found together
+  await ev(`__setInput(document.querySelector('.search input'), 'kota')`)
+  await waitFor(`document.querySelectorAll('.sr-item').length >= 2`, 'search results')
+  await sleep(300)
+  await region('sidebar-search', 0, 92, 302, 440)
+  await ev(`__setInput(document.querySelector('.search input'), '')`)
+  await waitFor(`!document.querySelector('.sr')`, 'search cleared')
 
   // ── objects tab ──
   await ev(`__fire(__byText('.node .label', 'main').parentElement, 'dblclick')`)

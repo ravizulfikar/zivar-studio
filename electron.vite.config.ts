@@ -9,7 +9,8 @@ const version = (JSON.parse(readFileSync('package.json', 'utf8')) as { version: 
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
-    resolve: { alias: shared }
+    resolve: { alias: shared },
+    define: { __APP_VERSION__: JSON.stringify(version) }
   },
   preload: {
     plugins: [externalizeDepsPlugin()],
