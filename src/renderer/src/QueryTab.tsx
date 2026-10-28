@@ -63,6 +63,7 @@ export function QueryTab({ connId, connName, kind, container, initialSql, savedI
   const [error, setError] = useState<string | null>(null)
   const [running, setRunning] = useState(false)
   const [filter, setFilter] = useState('')
+  const [textPanel, setTextPanel] = useState(false)
   const [editorH, setEditorH] = useState(200)
   const [library, setLibrary] = useState(false)
   const [naming, setNaming] = useState(false)
@@ -277,6 +278,9 @@ export function QueryTab({ connId, connName, kind, container, initialSql, savedI
           <IconSearch size={13} />
           <input placeholder="Filter rows" value={filter} onChange={(e) => setFilter(e.target.value)} />
         </div>
+        <button className={textPanel ? 'on' : ''} onClick={() => setTextPanel((v) => !v)} title="Show the selected cell large, under the results">
+          Text
+        </button>
         <ExportMenu
           variant="small"
           disabled={!result?.columns.length}
@@ -307,7 +311,7 @@ export function QueryTab({ connId, connName, kind, container, initialSql, savedI
 
       <div className="result">
         {error && <div className="msg error">{error}</div>}
-        {result && <ResultGrid result={result} filter={filter} />}
+        {result && <ResultGrid result={result} filter={filter} textPanel={textPanel} />}
         {!result && !error && !running && <div className="msg muted">Ctrl+Enter runs the selection (or the whole editor).</div>}
       </div>
       <div className="statusline">

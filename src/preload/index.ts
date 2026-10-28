@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import type { Api, ProgressEvent } from '@shared/types'
 
 const api: Api = {
+  checkForUpdates: (auto) => ipcRenderer.invoke('update:check', auto),
   listConnections: () => ipcRenderer.invoke('connections:list'),
   saveConnection: (cfg) => ipcRenderer.invoke('connections:save', cfg),
   deleteConnection: (id) => ipcRenderer.invoke('connections:delete', id),

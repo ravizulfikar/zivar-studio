@@ -84,7 +84,24 @@ const SQLFILE = path.join(SCRATCH, 'promo.sql')
 fs.writeFileSync(SQLFILE, "-- Tabel promo akhir tahun\nCREATE TABLE promo (id INTEGER PRIMARY KEY, kode TEXT NOT NULL, diskon INTEGER);\nINSERT INTO promo VALUES (1, 'NATAL25', 25);\nINSERT INTO promo VALUES (2, 'TAHUNBARU', 15);\nUPDATE products SET stock = stock + 10 WHERE category = 'Biji kopi';\n")
 
 // ── drive the app ──────────────────────────────────────────────────────────────────────────────
-const env = { ...process.env }
+const UPDATE_PORT = 9347
+const fakeGithub = require('node:http').createServer((req, res) => {
+  const base = `http://127.0.0.1:${UPDATE_PORT}`
+  const asset = (name, size) => ({ name, size, browser_download_url: `${base}/releases/download/v2.0.0/${name}` })
+  res.writeHead(200, { 'content-type': 'application/json' })
+  res.end(
+    JSON.stringify({
+      tag_name: 'v2.0.0',
+      name: 'Zivar Database Studio v2.0.0',
+      html_url: `${base}/releases/tag/v2.0.0`,
+      published_at: '2027-01-15T08:00:00Z',
+      body: "## What's new\n- An example: this is where the notes of a new release are shown.\n- Each change of the release is listed here.\n- Nothing on this screen is a real release.",
+      assets: [asset('ZivarDatabaseStudio-Setup-2.0.0.exe', 120400000), asset('ZivarDatabaseStudio-Portable-2.0.0.exe', 120200000), asset('ZivarDatabaseStudio-2.0.0-linux-amd64.deb', 108000000)]
+    })
+  )
+})
+fakeGithub.listen(UPDATE_PORT, '127.0.0.1')
+const env = { ...process.env, ZIVAR_UPDATE_URL: `http://127.0.0.1:${UPDATE_PORT}/latest` }
 delete env.ELECTRON_RUN_AS_NODE
 const app = spawn(require('electron'), [path.join(__dirname, '..', 'out/main/index.js'), `--remote-debugging-port=${PORT}`, `--user-data-dir=${path.join(SCRATCH, 'userdata')}`], { env, stdio: 'ignore' })
 
@@ -168,7 +185,7 @@ async function setFile(file) {
   await saved('Stok menipis', 'SELECT sku, name, stock FROM products WHERE stock < 15 ORDER BY stock')
   await saved('Omzet per kota', 'SELECT * FROM v_penjualan_per_kota ORDER BY omzet DESC')
   await saved('Pesanan terbaru', 'SELECT * FROM orders ORDER BY ordered_at DESC LIMIT 20')
-  await ev(`localStorage.setItem('zivar-theme', 'light'); location.reload()`)
+  await ev(`localStorage.setItem('zivar-theme', 'light'); localStorage.setItem('zivar-update-auto', '0'); location.reload()`)
   await sleep(1500)
   await ev(HELPERS)
 
@@ -234,6 +251,45 @@ async function setFile(file) {
   await waitFor(`/1 \\/ \\d+/.test(__pane().querySelector('.find-bar').textContent)`, 'matches counted')
   await of('find-replace', '.main')
   await sub('Find') // close the bar
+
+  // structured filter, sort and the Text panel
+  const vbtn = (label) => click(`[...__pane().querySelectorAll('.view-bar button')].find(b => b.textContent.trim().startsWith(${JSON.stringify(label)}))`)
+  const crit = (label) => click(`[...__pane().querySelectorAll('.crit-foot button')].find(b => b.textContent.includes(${JSON.stringify(label)}))`)
+  await vbtn('Filter')
+  await waitFor(`!!__pane().querySelector('[data-testid=filter-panel] .crit-row')`, 'filter panel')
+  await ev(`__setInput(__pane().querySelector('.crit-col'), 'stock'); __setInput(__pane().querySelector('.crit-op'), 'lt')`)
+  await ev(`__setInput(__pane().querySelector('.crit-val'), '40')`)
+  await crit('Condition')
+  await ev(`(() => { const r = __pane().querySelectorAll('.crit-row')[1]; __setInput(r.querySelector('.crit-col'), 'category'); __setInput(r.querySelector('.crit-op'), 'contains') })()`)
+  await ev(`__setInput(__pane().querySelectorAll('.crit-row')[1].querySelector('.crit-val'), 'Biji')`)
+  await crit('Apply')
+  await waitFor(`__pane().querySelectorAll('table.grid tbody tr').length === 4`, 'four rows match both conditions')
+  await sleep(300)
+  await of('grid-filter', '.main')
+  await vbtn('Filter') // close the panel; the filter stays
+  await vbtn('Sort')
+  await waitFor(`!!__pane().querySelector('[data-testid=sort-panel] .crit-row')`, 'sort panel')
+  await ev(`__setInput(__pane().querySelector('[data-testid=sort-panel] .crit-col'), 'category')`)
+  await crit('Sort column')
+  await ev(`(() => { const r = __pane().querySelectorAll('[data-testid=sort-panel] .crit-row')[1]; __setInput(r.querySelector('.crit-col'), 'price'); __setInput(r.querySelector('.crit-op'), 'desc') })()`)
+  await crit('Apply')
+  await waitFor(`/category ▲1/.test([...__pane().querySelectorAll('th')].map(t => t.textContent).join('|'))`, 'sorted')
+  await sleep(300)
+  await of('grid-sort', '.main')
+  await crit('Clear') // no sort
+  await vbtn('Sort')
+  await vbtn('Filter')
+  await crit('Clear') // no filter
+  await vbtn('Filter')
+  await waitFor(`__pane().querySelectorAll('table.grid tbody tr').length >= 14`, 'all rows again')
+  await vbtn('Text')
+  await waitFor(`!!__pane().querySelector('[data-testid=cell-panel]')`, 'text panel')
+  await ev(`__fire(__pane().querySelectorAll('table.grid tbody tr')[0].cells[7], 'click')`)
+  await ev(`__setInput(__pane().querySelector('.cell-panel-head select'), 'json')`)
+  await waitFor(`!!__pane().querySelector('[data-testid=cell-panel] .jed .jt-row')`, 'json view of the cell')
+  await sleep(300)
+  await of('grid-text', '.main')
+  await vbtn('Text') // close it again
 
   // cell viewer on the JSON column
   await ev(`__fire(__pane().querySelectorAll('table.grid tbody tr')[0].cells[7], 'contextmenu')`)
@@ -424,11 +480,21 @@ async function setFile(file) {
   await full('dark-mode')
   await ev(`__byText('button.tool', 'Light').click()`)
 
+  // check for updates (against the pretend GitHub above)
+  await ev(`[...document.querySelectorAll('.menu-btn')].find(b => b.textContent === 'Help').click()`)
+  await waitFor(`[...document.querySelectorAll('.popup-item')].some(b => b.textContent.includes('Check for updates…'))`, 'Help menu')
+  await ev(`[...document.querySelectorAll('.popup-item')].find(b => b.textContent.includes('Check for updates…')).click()`)
+  await waitFor(`/is available/.test(document.querySelector('.update-dialog')?.textContent ?? '')`, 'update dialog', 15000)
+  await sleep(300)
+  await of('update-dialog', '.update-dialog', 3)
+  await closeDialog('Close')
+
   ws.close()
   app.kill()
   await sleep(800)
   fs.rmSync(SCRATCH, { recursive: true, force: true })
   console.log('DONE ->', OUT)
+  fakeGithub.close()
   process.exit(0)
 })().catch((e) => {
   console.error('SHOTS FAILED:', e.message)

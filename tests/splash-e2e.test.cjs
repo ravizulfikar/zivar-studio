@@ -10,7 +10,7 @@ const assert = require('node:assert/strict')
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const VERSION = require('../package.json').version
 const SPLASH_TITLE = 'Zivar Database Studio — starting'
-const MIN_MS = 6000
+const MIN_MS = 9000 // generous: the machine may be busy, and every check below has to happen while the splash is still up
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'zivar-splash-'))
 const shotsDir = process.env.SPLASH_SHOTS_DIR
 let port = 9390
@@ -81,6 +81,18 @@ async function waitForVisibleTitle(pid, wanted, what) {
 const isSplash = (t) => t.title === SPLASH_TITLE
 const isMain = (t) => !t.url.startsWith('data:') && t.title !== SPLASH_TITLE
 
+/** Removes the throwaway folder; Windows releases the files of a killed app a moment late, so try again before giving up (a leftover temp folder must not fail a test). */
+async function cleanup(dir) {
+  for (let i = 0; i < 20; i++) {
+    try {
+      fs.rmSync(dir, { recursive: true, force: true })
+      return
+    } catch {
+      await new Promise((r) => setTimeout(r, 500))
+    }
+  }
+}
+
 ;(async () => {
   // ── 1) with the splash ──
   {
@@ -97,6 +109,8 @@ const isMain = (t) => !t.url.startsWith('data:') && t.title !== SPLASH_TITLE
       }
       assert.ok(splash, 'the splash window opened')
       seenAt = Date.now()
+      // first thing, before anything slow: the operating system sees the splash and not the main window (the console turns the dash of the splash's title into a hyphen: match on its last word)
+      await waitForVisibleTitle(app.pid, (t) => t.endsWith('starting'), 'only the splash is visible while the app loads')
       console.log('splash seen after start-up')
 
       // what it shows, and that it is animated
@@ -130,7 +144,6 @@ const isMain = (t) => !t.url.startsWith('data:') && t.title !== SPLASH_TITLE
         main = (await app.targets()).find(isMain)
       }
       assert.ok(main, 'the main window page exists')
-      await waitForVisibleTitle(app.pid, (t) => t.endsWith('starting'), 'only the splash is visible while the app loads') // (the console turns the dash of its title into a hyphen: match on the last word)
 
       // later in the animation the Z is fully drawn and the nodes are in place
       await sleep(Math.max(0, seenAt + 2800 - Date.now()))
@@ -180,9 +193,9 @@ const isMain = (t) => !t.url.startsWith('data:') && t.title !== SPLASH_TITLE
   }
   console.log('ALL SPLASH E2E TESTS PASSED')
 })()
-  .then(() => (fs.rmSync(root, { recursive: true, force: true }), process.exit(0)))
-  .catch((e) => {
+  .then(async () => (await cleanup(root), process.exit(0)))
+  .catch(async (e) => {
     console.error('SPLASH E2E FAILED:', e.message)
-    try { fs.rmSync(root, { recursive: true, force: true }) } catch {}
+    await cleanup(root)
     process.exit(1)
   })

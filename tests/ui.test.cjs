@@ -504,6 +504,133 @@ const waitFor = async (expr, what, ms = 8000) => {
   assert.deepEqual(png, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 'a real PNG file')
   console.log('ER diagram: keys-only, search, SVG and PNG export OK')
 
+  // ── data grid: structured filter, multi-column sort, columns, and the Text panel ──
+  const sql1 = (sql) => ev(`window.api.query('t1', 'main', ${JSON.stringify(sql)}).then(r => r.ok)`)
+  await sql1('DROP TABLE IF EXISTS zz_view')
+  await sql1('CREATE TABLE zz_view (id INTEGER PRIMARY KEY, name TEXT, qty INT, grp INT)')
+  await sql1("INSERT INTO zz_view VALUES (1,'Alpha',10,1),(2,'alpha',20,2),(3,'Beta',30,1),(4,'gamma',40,2),(5,'Delta',50,1),(6,'epsilon',60,2)")
+  await ev(`__byText('button.tool', 'Refresh').click()`)
+  const box = `document.querySelector('.search input')`
+  await ev(`__setInput(${box}, 'zz_view')`)
+  await waitFor(`[...document.querySelectorAll('.sr-group')].some(g => g.textContent.includes('Test SQLite')) && [...document.querySelectorAll('.sr-item .label')].some(l => l.textContent.startsWith('zz_view'))`, 'the new table is found by the sidebar search')
+  await ev(`__fire([...document.querySelectorAll('.sr > div')].find(g => g.querySelector('.sr-group')?.textContent.includes('Test SQLite')).querySelector('.sr-item'), 'dblclick')`)
+  await ev(`${box}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
+  const gridRows = `__pane().querySelectorAll('table.grid tbody tr')`
+  await waitFor(`[...document.querySelectorAll('.tab.active .tab-title')].some(t => t.textContent === 'zz_view') && ${gridRows}.length === 6`, 'the table opens with its 6 rows')
+  // the text of one column of the grid (cell 0 is the row number): id 1, name 2, qty 3, grp 4
+  const col = (n) => ev(`[...${gridRows}].map(r => r.cells[${n}].textContent)`)
+  const viewBtn = (label) => `[...__pane().querySelectorAll('.view-bar button')].find(b => b.textContent.trim().startsWith(${JSON.stringify(label)}))`
+  const panelBtn = (label) => `[...__pane().querySelectorAll('.crit-foot button')].find(b => b.textContent.includes(${JSON.stringify(label)}))`
+
+  // Filter: a structured condition, applied
+  await ev(`${viewBtn('Filter')}.click()`)
+  await waitFor(`!!__pane().querySelector('[data-testid=filter-panel] .crit-row')`, 'the Filter panel with a first condition')
+  assert.equal(await ev(`[...__pane().querySelectorAll('.crit-op option')].length`), 23, 'all 23 operators are offered')
+  await ev(`__setInput(__pane().querySelector('.crit-col'), 'name'); __setInput(__pane().querySelector('.crit-op'), 'contains')`)
+  await ev(`__setInput(__pane().querySelector('.crit-val'), 'lpha')`)
+  assert.match(await ev(`__pane().querySelector('.crit-foot').textContent`), /Criteria edited/, 'typing makes the list "edited" until it is applied')
+  await ev(`${panelBtn('Apply')}.click()`)
+  await waitFor(`${gridRows}.length === 2`, 'only the rows containing "lpha"')
+  assert.deepEqual(await col(1), ['1', '2'])
+  assert.match(await ev(`__pane().querySelector('.inline-search input').value`), /lpha/, 'the generated WHERE is shown in the quick box')
+  assert.match(await ev(`__pane().querySelector('.crit-foot').textContent`), /Applied/)
+  // a second condition, joined with "and"
+  await ev(`${panelBtn('Condition')}.click()`)
+  await waitFor(`__pane().querySelectorAll('.crit-row').length === 2`, 'a second condition')
+  await ev(`(() => { const r = __pane().querySelectorAll('.crit-row')[1]; __setInput(r.querySelector('.crit-col'), 'qty'); __setInput(r.querySelector('.crit-op'), 'gt'); })()`)
+  await ev(`__setInput(__pane().querySelectorAll('.crit-row')[1].querySelector('.crit-val'), '15')`)
+  await ev(`${panelBtn('Apply')}.click()`)
+  await waitFor(`${gridRows}.length === 1`, '"contains lpha" and "qty > 15"')
+  assert.deepEqual(await col(1), ['2'])
+  // joined with "or" (and a stricter second condition), the other rows come back too
+  await ev(`__setInput(__pane().querySelectorAll('.crit-row')[1].querySelector('.crit-val'), '35')`)
+  await ev(`__setInput(__pane().querySelector('.crit-join'), 'or')`)
+  await ev(`${panelBtn('Apply')}.click()`)
+  await waitFor(`${gridRows}.length === 5`, '"contains lpha" or "qty > 35"')
+  assert.deepEqual(await col(1), ['1', '2', '4', '5', '6'])
+  // an unfinished condition is left out, and Clear removes everything
+  await ev(`${panelBtn('Clear')}.click()`)
+  await waitFor(`${gridRows}.length === 6`, 'Clear shows every row again')
+  assert.equal(await ev(`__pane().querySelector('.inline-search input').value`), '')
+  await ev(`${viewBtn('Filter')}.click()`)
+
+  // Sort: two columns, then by clicking headings
+  await ev(`${viewBtn('Sort')}.click()`)
+  await waitFor(`!!__pane().querySelector('[data-testid=sort-panel] .crit-row')`, 'the Sort panel')
+  await ev(`__setInput(__pane().querySelector('[data-testid=sort-panel] .crit-col'), 'grp'); __setInput(__pane().querySelector('[data-testid=sort-panel] .crit-op'), 'desc')`)
+  await ev(`${panelBtn('Sort column')}.click()`)
+  await waitFor(`__pane().querySelectorAll('[data-testid=sort-panel] .crit-row').length === 2`, 'a second sort column')
+  await ev(`(() => { const r = __pane().querySelectorAll('[data-testid=sort-panel] .crit-row')[1]; __setInput(r.querySelector('.crit-col'), 'id'); __setInput(r.querySelector('.crit-op'), 'desc') })()`)
+  await ev(`${panelBtn('Apply')}.click()`)
+  await waitFor(`${gridRows}.length === 6 && [...${gridRows}].map(r => r.cells[1].textContent).join() === '6,4,2,5,3,1'`, 'sorted by grp descending, then id descending')
+  assert.match(await ev(`[...__pane().querySelectorAll('th')].map(t => t.textContent).join('|')`), /id ▼2.*grp ▼1/, 'the headings show the order of the sort columns')
+  await ev(`${viewBtn('Sort')}.click()`)
+  // a click on a heading sorts by that column alone; Shift+click adds it
+  await ev(`[...__pane().querySelectorAll('th')].find(t => t.textContent.startsWith('qty')).click()`)
+  await waitFor(`[...${gridRows}].map(r => r.cells[1].textContent).join() === '1,2,3,4,5,6'`, 'sorted by qty')
+  await ev(`[...__pane().querySelectorAll('th')].find(t => t.textContent.startsWith('grp')).dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: true }))`)
+  await waitFor(`/qty ▲1/.test([...__pane().querySelectorAll('th')].map(t => t.textContent).join('|')) && /grp ▲2/.test([...__pane().querySelectorAll('th')].map(t => t.textContent).join('|'))`, 'Shift+click added a second sort column')
+  await ev(`__setInput(__pane().querySelector('.inline-search input'), '')`)
+  // with two sort columns, a plain click starts again with this column alone (ascending), then descending, then no sort
+  await ev(`[...__pane().querySelectorAll('th')].find(t => t.textContent.startsWith('qty')).click()`)
+  await waitFor(`/qty ▲/.test([...__pane().querySelectorAll('th')].map(t => t.textContent).join('|')) && !/grp ▲/.test([...__pane().querySelectorAll('th')].map(t => t.textContent).join('|'))`, 'a plain click sorts by qty alone')
+  await ev(`[...__pane().querySelectorAll('th')].find(t => t.textContent.startsWith('qty')).click()`)
+  await waitFor(`/qty ▼/.test([...__pane().querySelectorAll('th')].map(t => t.textContent).join('|'))`, 'qty descending')
+  await ev(`[...__pane().querySelectorAll('th')].find(t => t.textContent.startsWith('qty')).click()`)
+  await waitFor(`![...__pane().querySelectorAll('th')].some(t => /[▲▼]/.test(t.textContent)) && [...__pane().querySelectorAll('table.grid tbody tr')].map(r => r.cells[1].textContent).join() === '1,2,3,4,5,6'`, 'no sort: the natural order again')
+
+  // Columns: hide one, bring it back
+  await ev(`${viewBtn('Columns')}.click()`)
+  await waitFor(`!!document.querySelector('.cols-pop')`, 'the Columns list')
+  await ev(`[...document.querySelectorAll('.cols-pop label')].find(l => l.textContent.trim() === 'qty').querySelector('input').click()`)
+  await waitFor(`![...__pane().querySelectorAll('th')].some(t => t.textContent.startsWith('qty'))`, 'the qty column is hidden')
+  assert.match(await ev(`${viewBtn('Columns')}.textContent`), /3\/4/, 'the button says how many columns are shown')
+  await ev(`[...document.querySelectorAll('.cols-pop button')].find(b => b.textContent === 'All').click()`)
+  await waitFor(`[...__pane().querySelectorAll('th')].some(t => t.textContent.startsWith('qty'))`, 'All brings it back')
+  await ev(`document.querySelector('.cols-pop').previousSibling.click()`)
+
+  // Text: the selected cell, large, under the grid
+  await ev(`${viewBtn('Text')}.click()`)
+  await waitFor(`!!__pane().querySelector('[data-testid=cell-panel]')`, 'the Text panel')
+  assert.match(await ev(`__pane().querySelector('[data-testid=cell-panel]').textContent`), /Click a cell/)
+  await ev(`__fire([...${gridRows}][0].cells[2], 'click')`)
+  await waitFor(`__pane().querySelector('[data-testid=cell-panel] textarea')?.value === 'Alpha'`, 'the clicked cell shows in the panel')
+  assert.ok(await ev(`[...${gridRows}][0].cells[2].classList.contains('cell-sel')`), 'the selected cell is marked in the grid')
+  assert.match(await ev(`__pane().querySelector('.cell-panel-head').textContent`), /name.*TEXT.*5 characters/, 'column, type and size')
+  // edit in the panel: staged like any edit of the grid
+  await ev(`(() => { const t = __pane().querySelector('[data-testid=cell-panel] textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(t, '{"k":[1,2]}'); t.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+  await ev(`[...__pane().querySelectorAll('.cell-panel-head button')].find(b => b.textContent === 'Apply to cell').click()`)
+  await waitFor(`[...${gridRows}][0].cells[2].classList.contains('dirty') && [...${gridRows}][0].cells[2].textContent === '{"k":[1,2]}'`, 'Apply to cell stages the edit')
+  // the same value as JSON (a tree), and as hex
+  await ev(`__setInput(__pane().querySelector('.cell-panel-head select'), 'json')`)
+  await waitFor(`!!__pane().querySelector('[data-testid=cell-panel] .jed .jt-row')`, 'the JSON view of the cell')
+  await ev(`__setInput(__pane().querySelector('.cell-panel-head select'), 'hex')`)
+  await waitFor(`/7b 22 6b 22 3a 5b 31 2c 32 5d 7d/.test(__pane().querySelector('[data-testid=cell-panel] pre').textContent)`, 'the hex view of the cell')
+  await ev(`__setInput(__pane().querySelector('.cell-panel-head select'), 'text')`)
+  // a number cell, and a click on another cell moves the panel
+  await ev(`__fire([...${gridRows}][2].cells[3], 'click')`)
+  await waitFor(`__pane().querySelector('[data-testid=cell-panel] textarea')?.value === '30'`, 'another cell, another content')
+  // throw the staged edit away and drop the table
+  await ev(`[...__pane().querySelectorAll('.subtoolbar button')].find(b => b.textContent.includes('Discard')).click()`)
+  await waitFor(`!__pane().querySelector('td.dirty')`, 'the edit is discarded')
+  await sql1('DROP TABLE zz_view')
+  await ev(`__byText('button.tool', 'Refresh').click()`)
+  // the same Text panel under the results of a query (read-only there)
+  await ev(`__byText('button.tool', 'New Query').click()`)
+  await waitFor(`!!__pane().querySelector('.cm-content')`, 'a query editor')
+  await ev(`__pane().querySelector('.cm-content').focus()`)
+  await send('Input.insertText', { text: "select 'first line' as a, '{\"x\":[1,2]}' as j" })
+  await ev(`[...__pane().querySelectorAll('.subtoolbar button')].find(b => b.textContent.includes('Run')).click()`)
+  await waitFor(`__pane().querySelectorAll('table.grid tbody tr').length === 1`, 'one row of results')
+  await ev(`[...__pane().querySelectorAll('.subtoolbar button')].find(b => b.textContent.trim() === 'Text').click()`)
+  await waitFor(`!!__pane().querySelector('[data-testid=cell-panel]')`, 'the Text panel under the results')
+  await ev(`__fire(__pane().querySelectorAll('table.grid tbody tr')[0].cells[2], 'click')`)
+  await waitFor(`__pane().querySelector('[data-testid=cell-panel] textarea')?.value === '{"x":[1,2]}'`, 'the clicked result cell shows in the panel')
+  assert.ok(await ev(`![...__pane().querySelectorAll('.cell-panel-head button')].some(b => b.textContent === 'Apply to cell')`), 'results cannot be edited: no Apply to cell')
+  await ev(`__setInput(__pane().querySelector('.cell-panel-head select'), 'json')`)
+  await waitFor(`!!__pane().querySelector('[data-testid=cell-panel] .jed .jt-row')`, 'the JSON tree of a result cell')
+  console.log('data grid: structured filter (operators, and/or, clear), multi-column sort, columns, Text panel (text / JSON / hex / edit) OK')
+
   // ── sidebar search: tables, views, functions and saved queries ──
   const searchInput = `document.querySelector('.search input')`
   const typeSearch = (text) => ev(`__setInput(${searchInput}, ${JSON.stringify(text)})`)

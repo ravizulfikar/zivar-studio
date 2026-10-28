@@ -24,14 +24,14 @@ Browse, query, edit, design, migrate and diagram your databases from one window.
 |---|---|
 | **Connections** | PostgreSQL, MySQL / MariaDB, SQL Server and SQLite. Folders and colour tags (mark production at a glance), SSL/TLS, and SSH tunnels with password or private key. Passwords are encrypted with the operating system's secure storage. |
 | **Object tree** | Databases / schemas → tables, views, materialized views, functions and your saved queries. A search box that finds tables, views, functions and saved queries (by name, and queries by their SQL too), context menus, and a details panel. |
-| **Data grid** | Paging, sorting, `WHERE` filter, and safe editing: changes are staged, then written in one transaction with **Apply**. Find & replace across cells, and a cell viewer for text, JSON, hex and images. |
+| **Data grid** | Paging, a structured **Filter** (23 operators, and / or), multi-column **Sort**, a column picker, a large **Text** view of the selected cell (text / JSON / hex), a `WHERE` box, and safe editing: changes are staged, then written in one transaction with **Apply**. Find & replace across cells, and a cell viewer for text, JSON, hex and images. |
 | **SQL editor** | Schema-aware autocomplete, run selection (`Ctrl+Enter`), stop, explain, beautify / minify, snippets (built-in and your own), query history and per-database saved queries. |
 | **JSON editor** | Text and tree side by side: search, edit in the tree, format, minify, sort keys. Exact big numbers and key order are preserved. |
 | **Table designer** | Columns, indexes and foreign keys with a live **DDL preview**; applied in a transaction wherever the database supports transactional DDL. |
 | **Import / export** | Import CSV, TSV, Excel and JSON / NDJSON with column mapping. Export to Excel, CSV, JSON or SQL `INSERT`. |
 | **Migration** | Run `.sql` files (understands `$$`, `DELIMITER`, `GO`), dump to SQL, **transfer data between connections — even across engines** — and synchronise table structure. |
 | **ER diagram** | Draggable, zoomable diagram of your tables and relations, with SVG / PNG export. |
-| **And** | An animated start-up splash, light and dark themes, a built-in searchable manual (`F1`, in Indonesian), and a portable build that needs no installation. |
+| **And** | An animated start-up splash, a check for updates against the GitHub releases, light and dark themes, a built-in searchable manual (`F1`, in Indonesian), and a portable build that needs no installation. |
 
 <details>
 <summary>More screenshots</summary>
@@ -127,7 +127,7 @@ scripts        Screenshot and icon generators
 
 - Passwords (including SSH passwords and key passphrases) are stored encrypted with the OS secure storage (DPAPI on Windows), never as plain text.
 - SSH host keys are pinned on first connection; a changed key is refused.
-- The app makes no network connections other than the database connections you configure.
+- The app connects only to the databases you configure, and to GitHub to check for updates: a plain request for the public releases page that carries no connection, database or personal data, and that can be switched off in the Help menu.
 
 Found a vulnerability? Please open a private [security advisory](https://github.com/ravizulfikar/zivar-studio/security/advisories/new) rather than a public issue.
 

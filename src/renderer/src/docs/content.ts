@@ -128,6 +128,56 @@ export const GROUPS: Group[] = [
         ]
       },
             {
+        id: 'filter-urut',
+        title: 'Filter terstruktur, urutan, dan kolom',
+        summary: 'Menyaring dan mengurutkan data tanpa menulis SQL, dan memilih kolom yang tampil.',
+        blocks: [
+          { t: 'p', text: 'Di bawah toolbar tab data ada baris tombol **Text**, **Filter**, **Sort**, dan **Columns**. Yang pertama dijelaskan di bagian *Panel Text*.' },
+          { t: 'p', text: '**Filter.** Klik **Filter** untuk menyusun kondisi tanpa menulis SQL. Setiap baris adalah satu kondisi: kotak centang (dipakai atau tidak), kolom, operator, dan nilai. Klik **+ Condition** untuk menambah baris; pilihan **and** / **or** di ujung sebuah baris menyambungkannya ke baris berikutnya. Tekan **Apply** (atau Enter di kotak nilai) untuk menjalankannya.' },
+          { t: 'img', file: 'grid-filter', caption: 'Dua kondisi digabung dengan “and”: stock < 40 dan category mengandung “Biji”. Empat baris cocok.' },
+          { t: 'table', head: ['Operator', 'Arti'], rows: [
+            ['`=` `!=` `<` `<=` `>` `>=`', 'Perbandingan. Angka dibandingkan sebagai angka (tanpa pembulatan), teks sebagai teks.'],
+            ['**contains**, **contains (case insensitive)**', 'Mengandung teks. Yang pertama membedakan huruf besar/kecil, yang kedua tidak. Berlaku juga untuk kolom angka atau tanggal.'],
+            ['**does not contain** (dan versi case insensitive)', 'Tidak mengandung teks itu. Baris yang nilainya NULL ikut disertakan.'],
+            ['**begins with**, **ends with**', 'Diawali / diakhiri teks. Ada juga versi “does not …”.'],
+            ['**is null**, **is not null**', 'Nilainya NULL / bukan NULL.'],
+            ['**is empty**, **is not empty**', 'Teks sepanjang nol / bukan. Teks yang hanya berisi spasi *bukan* kosong.'],
+            ['**is between**, **is not between**', 'Dua nilai, batas bawah dan atas (keduanya ikut).'],
+            ['**is in list**, **is not in list**', 'Daftar nilai: satu per baris, atau dipisah koma.'],
+            ['**[Custom]**', 'Kondisi SQL Anda sendiri untuk baris itu, misalnya `qty > 5 OR note IS NULL`.']
+          ] },
+          { t: 'ul', items: [
+            'Kondisi digabung dari atas ke bawah: “a and b or c” berarti ((a and b) or c).',
+            'Baris yang belum lengkap (nilainya masih `<?>`) dan yang tidak dicentang diabaikan.',
+            'Teks yang Anda ketik selalu ditulis dengan benar untuk jenis database-nya. Karakter yang punya arti khusus (`%` `_` kutip, garis miring terbalik) diperlakukan sebagai teks biasa, bukan sebagai pola.',
+            'Perbandingan teks mengikuti *collation* kolom: di MySQL dan SQL Server biasanya huruf besar/kecil tidak dibedakan (“Alpha” sama dengan “alpha”). Perbandingan `=`, `!=`, `<`, `>` mengikuti aturan SQL, jadi baris NULL tidak ikut.',
+            'SQL yang dihasilkan tampil di kotak **WHERE** pada toolbar. Mengetik sendiri di kotak itu lalu menekan Enter menggantikan hasil panel. **Clear** menghapus semua kondisi.'
+          ] },
+          { t: 'p', text: '**Sort.** Klik **Sort** untuk mengurutkan menurut beberapa kolom: pilih kolom dan arahnya, **+ Sort column** menambah kolom berikutnya, dan panah ↑ ↓ mengubah prioritas (yang paling atas paling menentukan).' },
+          { t: 'img', file: 'grid-sort', caption: 'Diurutkan menurut category (naik), lalu price (turun). Angka di judul kolom menunjukkan prioritasnya.' },
+          { t: 'ul', items: [
+            'Klik judul kolom mengurutkan menurut kolom itu saja: klik lagi untuk menurun, sekali lagi untuk menghapus urutan.',
+            '**Shift+klik** judul kolom menambahkannya sebagai urutan tambahan.'
+          ] },
+          { t: 'p', text: '**Columns.** Daftar kolom dengan kotak centang untuk menyembunyikan kolom yang tidak diperlukan. Ini hanya mengubah tampilan: data, pengeditan, dan ekspor tidak berubah. **All** menampilkan semuanya; setidaknya satu kolom selalu tampil.' }
+        ]
+      },
+      {
+        id: 'panel-text',
+        title: 'Panel Text',
+        summary: 'Isi sel yang terpilih, ditampilkan besar di bawah grid.',
+        blocks: [
+          { t: 'p', text: 'Klik **Text** di baris tombol tab data (atau di toolbar tab query). Setelah itu, klik sel mana pun dan isinya tampil di panel di bawah grid, lengkap dengan nama kolom, tipe, dan ukurannya. Seret garis pemisahnya untuk mengubah tinggi panel.' },
+          { t: 'img', file: 'grid-text', caption: 'Sel berisi JSON dibuka di panel Text, dengan tampilan pohon.' },
+          { t: 'ul', items: [
+            '**Tampilan:** pilih **Text**, **JSON** (pohon yang bisa dicari, seperti di *Editor JSON*), atau **Hex** lewat kotak pilihan di panel. Data biner otomatis tampil sebagai Hex.',
+            '**Mengedit:** pada tabel yang bisa diedit, teks di panel bisa diubah. **Apply to cell** menyiapkan perubahan itu seperti pengeditan biasa (baru tertulis ke database saat Anda menekan **Apply** di toolbar), dan **Set NULL** mengosongkan sel.',
+            'Pada hasil query panel hanya untuk dibaca.',
+            '**Copy** menyalin isi sel ke clipboard.'
+          ] }
+        ]
+      },
+      {
         id: 'cari-ganti',
         title: 'Cari dan ganti di grid',
         summary: 'Mengganti teks di banyak sel sekaligus, dengan peninjauan sebelum disimpan.',
@@ -413,6 +463,23 @@ export const GROUPS: Group[] = [
     title: 'Lainnya',
     sections: [
             {
+        id: 'pembaruan',
+        title: 'Memeriksa pembaruan',
+        summary: 'Cari tahu apakah ada versi yang lebih baru di GitHub.',
+        blocks: [
+          { t: 'p', text: 'Pilih **Help → Check for updates…** untuk melihat apakah ada rilis yang lebih baru di halaman Releases di GitHub.' },
+          { t: 'img', file: 'update-dialog', caption: 'Dialog pembaruan. Versi 2.0.0 di gambar ini hanya contoh.' },
+          { t: 'ul', items: [
+            'Dialog menampilkan versi terpasang, versi terbaru, tanggal, dan catatan rilisnya.',
+            '**Download** membuka berkas yang cocok dengan sistem Anda di browser: installer (atau versi portable bila Anda memakainya) di Windows; `.deb`, `.rpm`, atau AppImage di Linux sesuai distribusi Anda. Di bawahnya ada petunjuk pemasangan. Aplikasi tidak memasang apa pun sendiri.',
+            '**Release page** membuka halaman rilisnya. Tautan hanya diterima jika mengarah ke repositori resmi aplikasi ini.',
+            'Jika pemeriksaan gagal (tidak ada koneksi, atau GitHub membatasi permintaan), dialog menjelaskan alasannya.'
+          ] },
+          { t: 'p', text: '**Pemeriksaan otomatis.** Beberapa detik setelah aplikasi dibuka, paling sering sekali sehari, aplikasi memeriksa diam-diam. Jika ada versi baru, muncul tombol “⬆ Version … is available” di bilah status; klik untuk membuka dialognya. Matikan lewat **Help → Check for updates automatically** (tanda ✓ berarti menyala).' },
+          { t: 'tip', text: 'Yang dikirim hanyalah permintaan biasa untuk halaman rilis publik ke api.github.com. Tidak ada data koneksi, isi database, atau data pribadi yang ikut; GitHub hanya melihat alamat IP Anda serta nama program dan versinya.' }
+        ]
+      },
+      {
         id: 'tema',
         title: 'Tema terang dan gelap',
         summary: 'Mengikuti sistem operasi, dan bisa diganti kapan saja.',
@@ -431,7 +498,8 @@ export const GROUPS: Group[] = [
             ['**Ctrl+Enter**', 'Menjalankan query (bagian yang diblok, atau seluruh isi editor).'],
             ['**Ctrl+Spasi**', 'Memunculkan saran autocomplete di editor SQL.'],
             ['**Ctrl+F**', 'Cari dan ganti di dalam editor SQL.'],
-            ['**Enter** (kotak WHERE)', 'Menerapkan filter pada tabel.'],
+            ['**Enter** (kotak WHERE, atau kotak nilai di panel Filter)', 'Menerapkan filter pada tabel.'],
+            ['**Shift+klik** judul kolom', 'Menambahkan kolom itu sebagai urutan tambahan.'],
             ['**Enter / Esc** (saat mengedit sel)', 'Menyelesaikan / membatalkan pengeditan.'],
             ['**Ctrl+0** (saat mengedit sel)', 'Mengisi sel dengan NULL.'],
             ['**Enter / Shift+Enter** (di kotak Find)', 'Kecocokan berikutnya / sebelumnya.'],
@@ -447,7 +515,7 @@ export const GROUPS: Group[] = [
           { t: 'ul', items: [
             '**Password** koneksi dan SSH disimpan terenkripsi dengan penyimpanan aman milik sistem operasi, tidak pernah sebagai teks biasa.',
             '**Host key SSH** dicatat pada sambungan pertama; jika berubah, koneksi ditolak.',
-            'Aplikasi **tidak mengirim data apa pun ke internet**. Semua koneksi hanya menuju database yang Anda atur sendiri. Satu-satunya tautan keluar adalah alamat website di jendela About, yang dibuka di browser.',
+            'Aplikasi hanya menghubungi database yang Anda atur sendiri, dan GitHub untuk **memeriksa pembaruan** (permintaan biasa untuk halaman rilis publik; tidak membawa data koneksi, isi database, maupun data pribadi; bisa dimatikan di menu Help). Tautan lain (website di jendela About, unduhan) dibuka di browser Anda.',
             'Perubahan data dan struktur selalu dijalankan sebagai transaksi bila database mendukungnya, sehingga kegagalan tidak meninggalkan data setengah jadi.'
           ] },
           { t: 'tip', text: 'Gunakan **warna koneksi** untuk menandai server produksi, dan akun database dengan hak akses secukupnya untuk pekerjaan sehari-hari.' }

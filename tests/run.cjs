@@ -29,9 +29,11 @@ buildSync({ ...common, entryPoints: [path.join(root, 'src/shared/erLayout.ts')],
 buildSync({ ...common, entryPoints: [path.join(root, 'src/main/userData.ts')], outfile: path.join(out, 'userData.cjs') })
 buildSync({ ...common, entryPoints: [path.join(root, 'src/shared/sidebarSearch.ts')], outfile: path.join(out, 'sidebarSearch.cjs') })
 buildSync({ ...common, entryPoints: [path.join(root, 'src/main/splashContent.ts')], outfile: path.join(out, 'splashContent.cjs') })
+buildSync({ ...common, entryPoints: [path.join(root, 'src/shared/filter.ts')], outfile: path.join(out, 'filter.cjs') })
+buildSync({ ...common, entryPoints: [path.join(root, 'src/shared/updates.ts')], outfile: path.join(out, 'updates.cjs') })
 buildSync({ ...common, entryPoints: [path.join(root, 'src/shared/jsonModel.ts')], outfile: path.join(out, 'jsonModel.cjs') })
 
-const suites = ['ddl.test.cjs', 'queue.test.cjs', 'convert-sync.test.cjs', 'er-layout.test.cjs', 'json-model.test.cjs', 'splash.test.cjs', 'sidebar-search.test.cjs', 'profile.test.cjs', 'sql-text.test.cjs', 'import-parse.test.cjs', 'export-formats.test.cjs', 'sqlite-driver.test.cjs', 'designer-sqlite.test.cjs', 'postgres.test.cjs', 'mysql.test.cjs', 'dump.test.cjs', 'transfer.test.cjs', 'pg-json.test.cjs', 'sync.test.cjs', ...(process.argv.includes('--ui') ? ['ui.test.cjs', 'profile-e2e.test.cjs', 'splash-e2e.test.cjs'] : [])]
+const suites = ['ddl.test.cjs', 'queue.test.cjs', 'convert-sync.test.cjs', 'er-layout.test.cjs', 'json-model.test.cjs', 'updates.test.cjs', 'splash.test.cjs', 'sidebar-search.test.cjs', 'profile.test.cjs', 'sql-text.test.cjs', 'import-parse.test.cjs', 'export-formats.test.cjs', 'sqlite-driver.test.cjs', 'designer-sqlite.test.cjs', 'postgres.test.cjs', 'mysql.test.cjs', 'dump.test.cjs', 'transfer.test.cjs', 'pg-json.test.cjs', 'filter.test.cjs', 'sync.test.cjs', ...(process.argv.includes('--ui') ? ['ui.test.cjs', 'profile-e2e.test.cjs', 'splash-e2e.test.cjs', 'updates-e2e.test.cjs'] : [])]
 // npm test -- --only=dump   runs just the suites whose file name contains "dump"
 const only = process.argv.find((a) => a.startsWith('--only='))?.slice(7)
 let failed = 0

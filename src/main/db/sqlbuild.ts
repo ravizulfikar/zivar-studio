@@ -1,4 +1,4 @@
-import type { RowChange } from '@shared/types'
+import type { OrderBy, RowChange } from '@shared/types'
 
 export interface Dialect {
   quote(id: string): string
@@ -104,9 +104,10 @@ export function importError(c: InsertChunk, err: unknown): Error {
 
 export const ROW_NOT_FOUND = 'No row matched — it was changed or deleted since it was loaded. Refresh and try again.'
 
-/** `ORDER BY "col" ASC` for a user-chosen column, quoted by the dialect. */
-export function orderClause(quote: (id: string) => string, orderBy?: { column: string; dir: 'asc' | 'desc' }): string {
-  return orderBy ? ` ORDER BY ${quote(orderBy.column)} ${orderBy.dir === 'desc' ? 'DESC' : 'ASC'}` : ''
+/** `ORDER BY "a" ASC, "b" DESC` for the user-chosen column(s), quoted by the dialect; '' when there are none. */
+export function orderClause(quote: (id: string) => string, orderBy?: OrderBy | OrderBy[]): string {
+  const list = orderBy === undefined ? [] : Array.isArray(orderBy) ? orderBy : [orderBy]
+  return list.length ? ` ORDER BY ${list.map((o) => `${quote(o.column)} ${o.dir === 'desc' ? 'DESC' : 'ASC'}`).join(', ')}` : ''
 }
 
 export function whereClause(where?: string): string {

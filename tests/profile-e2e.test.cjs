@@ -66,6 +66,18 @@ async function withApp({ appdata, userDataDir }, fn) {
   }
 }
 
+/** Removes the throwaway folder; Windows releases the files of a killed app a moment late, so try again before giving up (a leftover temp folder must not fail a test). */
+async function cleanup(dir) {
+  for (let i = 0; i < 20; i++) {
+    try {
+      fs.rmSync(dir, { recursive: true, force: true })
+      return
+    } catch {
+      await new Promise((r) => setTimeout(r, 500))
+    }
+  }
+}
+
 ;(async () => {
   const SECRET = 's3cret-ñ-密码'
   const conn = { id: 'c1', name: 'Old server', kind: 'postgres', host: 'db.example.test', port: 5432, user: 'app', password: SECRET, database: 'main' }
@@ -99,8 +111,8 @@ async function withApp({ appdata, userDataDir }, fn) {
   assert.deepEqual(snapshot(), before, "the user's real profile was not touched")
   console.log('ALL PROFILE E2E TESTS PASSED')
 })()
-  .then(() => (fs.rmSync(root, { recursive: true, force: true }), process.exit(0)))
-  .catch((e) => {
+  .then(async () => (await cleanup(root), process.exit(0)))
+  .catch(async (e) => {
     console.error('PROFILE E2E FAILED:', e.message)
     if (process.env.KEEP) console.error('kept:', root); else try { fs.rmSync(root, { recursive: true, force: true }) } catch {}
     process.exit(1)

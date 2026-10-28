@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { JSX } from 'react'
-import type { ColumnInfo, DbKind, DbObject, QueryResult, RowChange } from '@shared/types'
+import type { ColumnInfo, DbKind, DbObject, OrderBy, QueryResult, RowChange } from '@shared/types'
+import { compileFilter, isComplete, newCriterion, type Criterion } from '@shared/filter'
 import { errMsg, unwrap } from './api'
 import { ExportMenu } from './ExportMenu'
 import { exportResult } from './exportData'
 import { IconFilter, IconPlus, IconRefresh } from './Icons'
 import { CellViewer } from './CellViewer'
+import { CellPanel, type CellMode } from './CellPanel'
+import { FilterPanel, SortPanel } from './FilterPanel'
 import { fmt } from './cellFormat'
 
 const PAGE_SIZES = [100, 500, 1000]
 
-type Order = { column: string; dir: 'asc' | 'desc' } | undefined
+/** The columns the data is sorted by, the first one counting most. */
+type Order = OrderBy[]
 /** A cell is addressed by an existing row index or by a not-yet-saved row index. */
 type Target = { kind: 'row' | 'new'; i: number; col: string }
 
@@ -37,7 +41,7 @@ export function TableTab({ connId, connName, kind, container, obj, refreshKey, o
   const [durationMs, setDurationMs] = useState(0)
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(PAGE_SIZES[0])
-  const [order, setOrder] = useState<Order>(undefined)
+  const [order, setOrder] = useState<Order>([])
   const [whereInput, setWhereInput] = useState('')
   const [where, setWhere] = useState('')
   const [loading, setLoading] = useState(false)
@@ -55,6 +59,18 @@ export function TableTab({ connId, connName, kind, container, obj, refreshKey, o
   const [replaceText, setReplaceText] = useState('')
   const [matchCase, setMatchCase] = useState(false)
   const [findIdx, setFindIdx] = useState(0)
+  // the view bar: structured filter, sort, visible columns, and the cell (Text) panel
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [criteria, setCriteria] = useState<Criterion[]>([])
+  const [appliedCriteria, setAppliedCriteria] = useState('[]')
+  const [sortOpen, setSortOpen] = useState(false)
+  const [sortDraft, setSortDraft] = useState<OrderBy[]>([])
+  const [columnsOpen, setColumnsOpen] = useState(false)
+  const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const [textOpen, setTextOpen] = useState(false)
+  const [textMode, setTextMode] = useState<CellMode>('text')
+  const [textH, setTextH] = useState(240)
+  const [cell, setCell] = useState<Target | null>(null)
   const gridRef = useRef<HTMLDivElement>(null)
 
   const pending = Object.keys(edits).length + inserts.length + deletes.size
@@ -68,6 +84,7 @@ export function TableTab({ connId, connName, kind, container, obj, refreshKey, o
     setInserts([])
     setDeletes(new Set())
     setSelected(null)
+    setCell(null)
     setEditing(null)
   }
 
@@ -76,7 +93,7 @@ export function TableTab({ connId, connName, kind, container, obj, refreshKey, o
       setLoading(true)
       setError(null)
       try {
-        const r = await unwrap(window.api.tableData(connId, container, obj, { limit: size, offset: p * size, orderBy: ord, where: w }))
+        const r = await unwrap(window.api.tableData(connId, container, obj, { limit: size, offset: p * size, orderBy: ord.length ? ord : undefined, where: w }))
         setColumns(r.columns)
         setRows(r.rows)
         setHasNext(r.hasNext)
@@ -112,7 +129,7 @@ export function TableTab({ connId, connName, kind, container, obj, refreshKey, o
     if (pending > 0 && !window.confirm(`Discard ${pending} pending change(s)?`)) return
     const p = next.page ?? 0
     const size = next.size ?? pageSize
-    const ord = 'order' in next ? next.order : order
+    const ord = next.order ?? order
     const w = next.where ?? where
     clearPending()
     setPage(p)
@@ -122,12 +139,17 @@ export function TableTab({ connId, connName, kind, container, obj, refreshKey, o
     void load(p, size, ord, w)
   }
 
-  const sortBy = (col: string): void => {
-    const next: Order = order?.column !== col ? { column: col, dir: 'asc' } : order.dir === 'asc' ? { column: col, dir: 'desc' } : undefined
+  const sortBy = (col: string, add = false): void => {
+    const at = order.findIndex((o) => o.column === col)
+    let next: Order
+    if (add) next = at < 0 ? [...order, { column: col, dir: 'asc' }] : order[at].dir === 'asc' ? order.map((o, i) => (i === at ? { ...o, dir: 'desc' } : o)) : order.filter((_, i) => i !== at)
+    else next = order.length === 1 && at === 0 ? (order[0].dir === 'asc' ? [{ column: col, dir: 'desc' }] : []) : [{ column: col, dir: 'asc' }]
     go({ order: next })
   }
 
   const cellValue = (i: number, col: string, ci: number): unknown => (edits[i] && col in edits[i] ? edits[i][col] : rows[i][ci])
+
+  const cellOf = (t: Target | null): unknown => (!t ? undefined : t.kind === 'new' ? inserts[t.i]?.[t.col] : rows[t.i] ? cellValue(t.i, t.col, columns.indexOf(t.col)) : undefined)
 
   const commitEdit = (t: Target, text: string | null): void => {
     setEditing(null)
@@ -256,6 +278,40 @@ export function TableTab({ connId, connName, kind, container, obj, refreshKey, o
     commitEdit({ kind: 'row', i: m.i, col }, replaced(typeof v === 'string' ? v : fmt(v)))
   }
 
+  const toggleFilter = (): void => {
+    if (!filterOpen && criteria.length === 0 && meta.length) setCriteria([newCriterion(meta[0].name)])
+    setFilterOpen((v) => !v)
+  }
+  const applyCriteria = (): void => {
+    const sql = compileFilter(criteria, meta, kind)
+    setWhereInput(sql)
+    setAppliedCriteria(JSON.stringify(criteria))
+    go({ where: sql })
+  }
+  const clearCriteria = (): void => {
+    setCriteria([])
+    setAppliedCriteria('[]')
+    setWhereInput('')
+    go({ where: '' })
+  }
+  const toggleSort = (): void => {
+    if (!sortOpen) setSortDraft(order.length ? order : meta.length ? [{ column: meta[0].name, dir: 'asc' }] : [])
+    setSortOpen((v) => !v)
+  }
+  const startTextDrag = (e: React.MouseEvent): void => {
+    e.preventDefault()
+    const startY = e.clientY
+    const startH = textH
+    const move = (ev: MouseEvent): void => setTextH(Math.max(90, Math.min(520, startH + startY - ev.clientY)))
+    const up = (): void => {
+      window.removeEventListener('mousemove', move)
+      window.removeEventListener('mouseup', up)
+    }
+    window.addEventListener('mousemove', move)
+    window.addEventListener('mouseup', up)
+  }
+  const usedConditions = criteria.filter((c) => c.enabled && isComplete(c)).length
+
   const from = rows.length ? page * pageSize + 1 : 0
   return (
     <div className="pane-col">
@@ -289,7 +345,11 @@ export function TableTab({ connId, connName, kind, container, obj, refreshKey, o
             placeholder="WHERE …  (Enter to apply)"
             value={whereInput}
             onChange={(e) => setWhereInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && go({ where: whereInput })}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter') return
+              setAppliedCriteria('typed') // the conditions in the Filter panel no longer describe what is shown
+              go({ where: whereInput })
+            }}
           />
         </div>
         <ExportMenu
@@ -304,6 +364,67 @@ export function TableTab({ connId, connName, kind, container, obj, refreshKey, o
           }}
         />
       </div>
+
+      <div className="subtoolbar view-bar">
+        <button className={textOpen ? 'on' : ''} onClick={() => setTextOpen((v) => !v)} title="Show the selected cell large, under the grid">
+          Text
+        </button>
+        <button className={filterOpen ? 'on' : ''} onClick={toggleFilter} title="Filter the rows with conditions">
+          <IconFilter size={13} /> Filter {usedConditions > 0 && appliedCriteria !== '[]' && <span className="count">{usedConditions}</span>}
+        </button>
+        <button className={sortOpen ? 'on' : ''} onClick={toggleSort} title="Sort by one or more columns">
+          Sort {order.length > 0 && <span className="count">{order.length}</span>}
+        </button>
+        <div style={{ position: 'relative' }}>
+          <button className={columnsOpen ? 'on' : ''} onClick={() => setColumnsOpen((v) => !v)} title="Choose the columns that are shown">
+            Columns {hidden.size > 0 && <span className="count">{columns.length - hidden.size}/{columns.length}</span>}
+          </button>
+          {columnsOpen && (
+            <>
+              <div style={{ position: 'fixed', inset: 0, zIndex: 29 }} onClick={() => setColumnsOpen(false)} />
+              <div className="cols-pop" style={{ top: '100%', left: 0, marginTop: 3 }}>
+                <div className="cols-head">
+                  <button onClick={() => setHidden(new Set())}>All</button>
+                  <button onClick={() => setHidden(new Set(columns.slice(1)))} title="Show only the first column">
+                    None
+                  </button>
+                </div>
+                {columns.map((c) => (
+                  <label key={c}>
+                    <input
+                      type="checkbox"
+                      checked={!hidden.has(c)}
+                      onChange={(e) =>
+                        setHidden((prev) => {
+                          const next = new Set(prev)
+                          if (e.target.checked) next.delete(c)
+                          else if (next.size < columns.length - 1) next.add(c) // at least one column stays
+                          return next
+                        })
+                      }
+                    />
+                    {c}
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+      {filterOpen && <FilterPanel columns={meta} criteria={criteria} edited={JSON.stringify(criteria) !== appliedCriteria} onChange={setCriteria} onApply={applyCriteria} onClear={clearCriteria} />}
+      {sortOpen && (
+        <SortPanel
+          columns={meta}
+          sorts={sortDraft}
+          edited={JSON.stringify(sortDraft) !== JSON.stringify(order)}
+          onChange={setSortDraft}
+          onApply={() => go({ order: sortDraft })}
+          onClear={() => {
+            setSortDraft([])
+            go({ order: [] })
+          }}
+        />
+      )}
 
       {findOpen && (
         <div className="find-bar">
@@ -337,12 +458,19 @@ export function TableTab({ connId, connName, kind, container, obj, refreshKey, o
             <tr>
               <th className="rownum" />
               {columns.map((c) => {
+                if (hidden.has(c)) return null
                 const m = meta.find((x) => x.name === c)
+                const at = order.findIndex((o) => o.column === c)
                 return (
-                  <th key={c} className="sortable" onClick={() => sortBy(c)} title={m ? `${m.type}${m.nullable ? '' : ' NOT NULL'}` : ''}>
+                  <th key={c} className="sortable" onClick={(e) => sortBy(c, e.shiftKey)} title={`${m ? `${m.type}${m.nullable ? '' : ' NOT NULL'}` : ''}\nClick to sort, Shift+click to add a sort column`}>
                     {m?.primaryKey && <span className="pk">⚿ </span>}
                     {c}
-                    {order?.column === c && <span className="arrow">{order.dir === 'asc' ? ' ▲' : ' ▼'}</span>}
+                    {at >= 0 && (
+                      <span className="arrow">
+                        {order[at].dir === 'asc' ? ' ▲' : ' ▼'}
+                        {order.length > 1 ? at + 1 : ''}
+                      </span>
+                    )}
                   </th>
                 )
               })}
@@ -358,6 +486,7 @@ export function TableTab({ connId, connName, kind, container, obj, refreshKey, o
                     {deleted ? '✕' : isSel ? '▶' : from + i}
                   </td>
                   {columns.map((c, ci) => {
+                    if (hidden.has(c)) return null
                     const v = cellValue(i, c, ci)
                     const dirty = !!edits[i] && c in edits[i]
                     const t: Target = { kind: 'row', i, col: c }
@@ -366,8 +495,8 @@ export function TableTab({ connId, connName, kind, container, obj, refreshKey, o
                         key={c}
                         data-r={i}
                         data-c={ci}
-                        className={`${v === null || v === undefined ? 'null' : ''} ${dirty ? 'dirty' : ''} ${matchAt.has(`${i}:${ci}`) ? (matchAt.get(`${i}:${ci}`) === cur ? 'find-cur' : 'find-hit') : ''}`}
-                        onClick={() => setSelected({ kind: 'row', i })}
+                        className={`${v === null || v === undefined ? 'null' : ''} ${dirty ? 'dirty' : ''} ${sameTarget(cell, 'row', i, c) ? 'cell-sel' : ''} ${matchAt.has(`${i}:${ci}`) ? (matchAt.get(`${i}:${ci}`) === cur ? 'find-cur' : 'find-hit') : ''}`}
+                        onClick={() => (setSelected({ kind: 'row', i }), setCell(t))}
                         onDoubleClick={() => startEdit('row', i, c)}
                         onContextMenu={(e) => {
                           e.preventDefault()
@@ -390,13 +519,14 @@ export function TableTab({ connId, connName, kind, container, obj, refreshKey, o
                     ＋
                   </td>
                   {columns.map((c) => {
+                    if (hidden.has(c)) return null
                     const set = c in vals
                     const v = vals[c]
                     return (
                       <td
                         key={c}
-                        className={`dirty ${!set || v === null ? 'null' : ''}`}
-                        onClick={() => setSelected({ kind: 'new', i })}
+                        className={`dirty ${!set || v === null ? 'null' : ''} ${sameTarget(cell, 'new', i, c) ? 'cell-sel' : ''}`}
+                        onClick={() => (setSelected({ kind: 'new', i }), setCell({ kind: 'new', i, col: c }))}
                         onDoubleClick={() => startEdit('new', i, c)}
                       >
                         {sameTarget(editing, 'new', i, c) ? renderInput({ kind: 'new', i, col: c }, set ? v : null) : set ? fmt(v) : '(default)'}
@@ -410,6 +540,21 @@ export function TableTab({ connId, connName, kind, container, obj, refreshKey, o
         </table>
         {!loading && rows.length === 0 && inserts.length === 0 && !error && <div className="msg muted">No rows.</div>}
       </div>
+
+      {textOpen && (
+        <>
+          <div className="hsplit" onMouseDown={startTextDrag} title="Drag to resize" />
+          <CellPanel
+            column={cell?.col ?? null}
+            type={cell ? meta.find((m) => m.name === cell.col)?.type : undefined}
+            value={cellOf(cell)}
+            mode={textMode}
+            onMode={setTextMode}
+            onApply={editable && cell && (cell.kind === 'new' || !deletes.has(cell.i)) ? (text) => commitEdit(cell, text) : undefined}
+            height={textH}
+          />
+        </>
+      )}
 
       {viewing && (
         <CellViewer

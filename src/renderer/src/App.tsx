@@ -21,6 +21,25 @@ import { StructureTab } from './StructureTab'
 import { Toolbar } from './Toolbar'
 import { SyncDialog, TransferDialog } from './TransferDialogs'
 import { applyTheme, loadTheme, ThemeContext, type Theme } from './theme'
+import { runUpdateCheck, UpdateDialog } from './UpdateDialog'
+import { shouldAutoCheck, type UpdateResult } from '@shared/updates'
+
+const AUTO_UPDATE_KEY = 'zivar-update-auto'
+const LAST_UPDATE_KEY = 'zivar-update-last'
+const readStore = (key: string): string | null => {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null // storage can be unavailable; the defaults apply
+  }
+}
+const writeStore = (key: string, value: string): void => {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    /* not remembered; it still applies for this session */
+  }
+}
 
 type Tab =
   | { id: string; title: string; kind: 'objects'; connId: string; container: string }
@@ -55,6 +74,29 @@ export function App(): JSX.Element {
   const [syncFrom, setSyncFrom] = useState<{ connId: string; container: string } | null>(null)
   const [dumpTarget, setDumpTarget] = useState<{ connId: string; container: string } | null>(null)
   const [importTarget, setImportTarget] = useState<{ connId: string; container: string; obj: DbObject } | null>(null)
+  const [autoUpdate, setAutoUpdate] = useState(() => readStore(AUTO_UPDATE_KEY) !== '0')
+  const [update, setUpdate] = useState<UpdateResult | null>(null)
+  const [updateOpen, setUpdateOpen] = useState(false)
+  const available = update?.ok && update.newer ? update.latest : null
+
+  const gotUpdateResult = useCallback((r: UpdateResult): void => {
+    setUpdate(r)
+    if (r.ok) writeStore(LAST_UPDATE_KEY, String(r.checkedAt))
+  }, [])
+  const toggleAutoUpdate = (): void => {
+    writeStore(AUTO_UPDATE_KEY, autoUpdate ? '0' : '1')
+    setAutoUpdate(!autoUpdate)
+  }
+  // A quiet check shortly after start-up, at most once a day. It only ever puts a note in the status bar.
+  useEffect(() => {
+    if (!autoUpdate) return
+    const last = Number(readStore(LAST_UPDATE_KEY))
+    if (!shouldAutoCheck(true, last > 0 ? last : null, Date.now())) return
+    const t = window.setTimeout(() => void runUpdateCheck(true).then((r) => r.ok && gotUpdateResult(r)), 6000)
+    return () => window.clearTimeout(t)
+    // Only on start-up: switching it on later does not check at once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => applyTheme(theme), [theme])
   const toggleTheme = (): void => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))
@@ -320,6 +362,9 @@ export function App(): JSX.Element {
       items: [
         { label: 'Documentation', hint: 'F1', onClick: openDocs },
         { separator: true, label: '' },
+        { label: 'Check for updates…', onClick: () => setUpdateOpen(true) },
+        { label: `${autoUpdate ? '✓ ' : '    '}Check for updates automatically`, onClick: toggleAutoUpdate },
+        { separator: true, label: '' },
         { label: 'About Zivar Database Studio', onClick: () => setAbout(true) }
       ]
     }
@@ -471,7 +516,14 @@ export function App(): JSX.Element {
         </main>
       </div>
       <div className="statusbar">
-        <span>{connections.length} connection(s)</span>
+        <span>
+          {connections.length} connection(s)
+          {available && (
+            <button className="update-chip" onClick={() => setUpdateOpen(true)} title="A newer version has been published">
+              ⬆ Version {available.version} is available
+            </button>
+          )}
+        </span>
         <span>
           {activeTab ? `${connName(activeTab.connId)}${activeTab.container ? ` › ${activeTab.container}` : ''}` : 'Ready'}
         </span>
@@ -552,6 +604,7 @@ export function App(): JSX.Element {
           }}
         />
       )}
+      {updateOpen && <UpdateDialog initial={update} onResult={gotUpdateResult} onClose={() => setUpdateOpen(false)} />}
       {about && (
         <div className="backdrop" onClick={() => setAbout(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>

@@ -24,6 +24,7 @@ import { transferTables } from './transfer'
 import * as store from './store'
 import { legacyProfile } from './userData'
 import { openSplash } from './splash'
+import { checkForUpdates } from './updates'
 import { shouldShowSplash, splashMinMs } from './splashContent'
 import { existsSync } from 'node:fs'
 
@@ -185,6 +186,8 @@ function registerIpc(): void {
     )
   })
   handle('db:schemaCompletion', (id: string, c: string) => queue.run(id, () => session(id).schemaCompletion(c)))
+
+  handle('update:check', (auto: boolean) => checkForUpdates(__APP_VERSION__, !!auto))
 
   handle('history:list', () => library.history.list())
   handle('history:add', (e: Omit<HistoryEntry, 'id'>) => library.history.add(e))

@@ -1,3 +1,5 @@
+import type { UpdateResult } from './updates'
+
 export type DbKind = 'postgres' | 'mysql' | 'sqlite' | 'mssql'
 
 export interface SshConfig {
@@ -130,10 +132,16 @@ export interface QueryResult {
   durationMs: number
 }
 
+export interface OrderBy {
+  column: string
+  dir: 'asc' | 'desc'
+}
+
 export interface TableDataOptions {
   limit: number
   offset: number
-  orderBy?: { column: string; dir: 'asc' | 'desc' }
+  /** One column, or several (the first one counts most). */
+  orderBy?: OrderBy | OrderBy[]
   /** Raw SQL condition typed by the user (without the WHERE keyword). */
   where?: string
 }
@@ -272,6 +280,8 @@ export type ProgressChannel = 'script:progress' | 'dump:progress' | 'transfer:pr
 export type IpcResult<T> = { ok: true; data: T } | { ok: false; error: string }
 
 export interface Api {
+  /** Asks GitHub for the latest release. `auto` marks the check the app makes by itself on start-up. */
+  checkForUpdates(auto: boolean): Promise<IpcResult<UpdateResult>>
   listConnections(): Promise<IpcResult<ConnectionConfig[]>>
   saveConnection(cfg: ConnectionConfig): Promise<IpcResult<void>>
   deleteConnection(id: string): Promise<IpcResult<void>>

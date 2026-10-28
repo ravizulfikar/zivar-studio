@@ -91,3 +91,6 @@ jobs:
 
       - name: Start-up splash
         run: node tests/run.cjs --ui --only=splash-e2e
+
+      - name: Check for updates (against a local stand-in for GitHub)
+        run: node tests/run.cjs --ui --only=updates-e2e

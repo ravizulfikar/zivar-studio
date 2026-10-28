@@ -16,13 +16,13 @@ interface Props {
 
 const HEX_LIMIT = 64 * 1024
 
-function toBytes(v: unknown): Uint8Array {
+export function toBytes(v: unknown): Uint8Array {
   if (v instanceof Uint8Array) return v
   return new TextEncoder().encode(typeof v === 'string' ? v : fmt(v))
 }
 
 /** Recognise common image formats from their first bytes (or an SVG document). */
-function imageMime(bytes: Uint8Array): string | null {
+export function imageMime(bytes: Uint8Array): string | null {
   const b = bytes
   if (b.length > 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png'
   if (b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg'
@@ -39,7 +39,7 @@ function toBase64(bytes: Uint8Array): string {
   return btoa(s)
 }
 
-function hexDump(bytes: Uint8Array): string {
+export function hexDump(bytes: Uint8Array): string {
   const shown = bytes.subarray(0, HEX_LIMIT)
   const lines: string[] = []
   for (let i = 0; i < shown.length; i += 16) {
@@ -52,7 +52,7 @@ function hexDump(bytes: Uint8Array): string {
   return lines.join('\n')
 }
 
-function initialText(v: unknown): string {
+export function initialText(v: unknown): string {
   if (v === null || v === undefined) return ''
   if (v instanceof Uint8Array) return ''
   if (typeof v === 'string') return v
